@@ -18,7 +18,7 @@ openai.api_key = st.secrets["OPENAI_API_KEY"]
 
 # Sidebar UI
 st.sidebar.markdown("## 🤖 Chat Assistant")
-st.sidebar.markdown("Ask questions based on filtered hospital data or a policy document.")
+st.sidebar.markdown("Ask questions based on filtered hospital data.")
 
 # Load hospital dataset
 if 'main_df' not in st.session_state:
@@ -51,7 +51,8 @@ loader = TextLoader(csv_path)
 docs = loader.load()
 splitter = CharacterTextSplitter(chunk_size=500, chunk_overlap=50)
 doc_chunks = splitter.split_documents(docs)
-vectorstore = FAISS.from_documents(doc_chunks, OpenAIEmbeddings())
+limited_chunks = doc_chunks[:200]  # Limit to avoid exceeding token budget
+vectorstore = FAISS.from_documents(limited_chunks, OpenAIEmbeddings())
 retriever = vectorstore.as_retriever()
 
 qa_chain = RetrievalQA.from_chain_type(
@@ -68,7 +69,17 @@ if uploaded_doc:
 
     doc_loader = TextLoader(uploaded_doc.name)
     doc_chunks = CharacterTextSplitter(chunk_size=500, chunk_overlap=50).split_documents(doc_loader.load())
-    vectorstore_doc = FAISS.from_documents(doc_chunks, OpenAIEmbeddings())
+    if len(doc_chunks) > 200:
+        st.warning("⚠️ Document is large — using only the first 200 chunks to avoid token limit errors.")
+    limited_doc_chunks = doc_chunks[:200]  # Limit to avoid token overload
+from time import sleep
+import tenacity
+
+@tenacity.retry(wait=tenacity.wait_exponential(multiplier=1, min=2, max=10), stop=tenacity.stop_after_attempt(5), retry=tenacity.retry_if_exception_type(Exception))
+def safe_embed(chunks):
+    return FAISS.from_documents(chunks, OpenAIEmbeddings())
+
+vectorstore_doc = safe_embed(limited_doc_chunks)
 
     rag_qa = RetrievalQA.from_chain_type(
         llm=ChatOpenAI(temperature=0),

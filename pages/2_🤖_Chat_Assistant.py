@@ -92,7 +92,7 @@ if user_input:
             response = st.session_state.rag_qa_chain.run(user_input)
         else:
             response = qa_chain.run(user_input)
-                st.session_state.chat_history.append((user_input, response))
+        st.session_state.chat_history.append((user_input, response))
 
         # Auto-tagging
         tags = []

@@ -15,9 +15,10 @@ from sklearn.cluster import KMeans
 st.title("🏥 Easy-to-Understand Hospital Data Dashboard")
 
 st.markdown("""
-Welcome! This dashboard turns complex hospital data into simple, visual stories.  
-Each chart or section has a small note to help **anyone, even a curious 15-year-old**, understand what's going on.
+Welcome to the Hospital Executive Insights Dashboard — designed to provide a clear, high-level view of operational performance and key healthcare metrics.  
+Each visualization is paired with concise commentary to support strategic decision-making, resource planning, and performance optimization.
 """)
+
 
 # 🔗 Embedded Power BI Dashboard
 st.header("📊 Power BI Insights Dashboard")

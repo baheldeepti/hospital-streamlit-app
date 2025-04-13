@@ -155,13 +155,19 @@ if not sample_qas:
     ]
 
 if "chat_history" not in st.session_state:
-    st.session_state.chat_history = [random.choice(sample_qas)]
+    st.session_state.chat_history = [
+        ("👋 Welcome! I'm your Hospital Data Assistant.",
+         "Upload a dataset or use the sample data to ask questions like:
+
+- What is the average length of stay by condition?
+- Show billing trend for January
+- How many patients were admitted last week?")
+    ]
 
 selected_example = st.selectbox("💡 Click an example to auto-fill the question box", [q for q, _ in sample_qas], index=0, key="example_prompt")
 user_input = st.text_input("💬 Ask your question:", value=selected_example)
 if not user_input.strip():
-    st.warning("Please enter a question.")
-    st.stop()
+    st.warning("Please enter a question above to receive insights.")
 
 # Generate response
 if user_input:
@@ -224,8 +230,11 @@ if user_input:
 
 # Render chat
 for i, (q, a) in enumerate(st.session_state.chat_history):
-    message(q, is_user=True, key=f"user_{i}")
-    message(a, key=f"bot_{i}")
+    if q.startswith("👋"):
+        message(q, is_user=False, key=f"sys_{i}", avatar_style="thumbs")
+    else:
+        message(q, is_user=True, key=f"user_{i}")
+    message(a, key=f"bot_{i}", avatar_style="fun-emoji")
 
 # Downloads
 if st.session_state.chat_history:

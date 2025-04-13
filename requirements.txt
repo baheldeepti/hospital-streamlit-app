@@ -4,3 +4,8 @@ matplotlib
 seaborn
 scikit-learn
 prophet
+langchain
+openai
+tiktoken
+streamlit-chat
+faiss-cpu

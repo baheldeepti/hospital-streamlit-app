@@ -125,7 +125,6 @@ if df is not None:
     splitter = CharacterTextSplitter(chunk_size=500, chunk_overlap=50)
     doc_chunks = splitter.split_documents(docs)
 
-    @st.cache_resource(show_spinner="🔄 Embedding in progress...")
     @st.cache_data
 def safe_embed(_chunks):
         text = " ".join([str(doc.page_content) for doc in _chunks])
@@ -158,9 +157,13 @@ if "chat_history" not in st.session_state:
     st.session_state.chat_history = [
         (
             "👋 Welcome! I'm your Hospital Data Assistant.",
-            "Upload a dataset or use the sample data to ask questions like:\n\n"
-            "- What is the average length of stay by condition?\n"
-            "- Show billing trend for January\n"
+            "Upload a dataset or use the sample data to ask questions like:
+
+"
+            "- What is the average length of stay by condition?
+"
+            "- Show billing trend for January
+"
             "- How many patients were admitted last week?"
         )
     ]

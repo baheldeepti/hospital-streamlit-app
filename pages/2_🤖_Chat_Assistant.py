@@ -12,6 +12,8 @@ from streamlit_chat import message
 import openai
 import altair as alt
 import numpy as np
+import os  
+import shutil
 
 # Set API key
 openai.api_key = st.secrets["OPENAI_API_KEY"]

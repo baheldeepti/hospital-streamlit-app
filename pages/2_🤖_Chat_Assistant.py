@@ -23,13 +23,13 @@ openai.api_key = st.secrets["OPENAI_API_KEY"]
 with st.sidebar.expander("📂 Dataset Configuration", expanded=True):
     use_sample_data = st.toggle("Use Sample Data Instead of Upload", value=True)
     uploaded_file = st.file_uploader("📁 Or upload your hospital dataset", type=["csv"])
+
 if use_sample_data:
     sample_url = "https://github.com/baheldeepti/hospital-streamlit-app/raw/main/modified_healthcare_dataset.csv"
     df = pd.read_csv(sample_url)
     df['Date of Admission'] = pd.to_datetime(df['Date of Admission'])
     df['Discharge Date'] = pd.to_datetime(df['Discharge Date'])
     st.session_state.main_df = df
-
 elif uploaded_file:
     df = pd.read_csv(uploaded_file)
     df['Date of Admission'] = pd.to_datetime(df['Date of Admission'], errors='coerce')
@@ -38,7 +38,7 @@ elif uploaded_file:
 else:
     df = None
 
-# 🔍 Data Preview
+# 🔍 Data Glossary
 with st.sidebar.expander("📘 Data Glossary", expanded=False):
     if df is not None:
         glossary = {
@@ -53,6 +53,8 @@ with st.sidebar.expander("📘 Data Glossary", expanded=False):
                 st.markdown(f"- **{col}**: {glossary[col]}")
             else:
                 st.markdown(f"- **{col}**: _(No description available)_")
+
+# 🔍 Data Preview & Stats
 with st.sidebar.expander("🔍 Data Preview & Stats"):
     if 'main_df' in st.session_state:
         required_cols = st.multiselect("✅ Required Columns", ["Billing Amount", "Length of Stay", "Medical Condition"], default=["Billing Amount", "Length of Stay"])
@@ -87,9 +89,9 @@ with st.sidebar.expander("⚙️ Embedding Settings"):
 with st.sidebar.expander("🧠 Chat Settings"):
     max_history = st.slider("Max Chat History Length", min_value=5, max_value=20, value=10, step=1)
     if st.button("🔁 Reset App State"):
-    st.session_state.clear()
-    st.success("✅ App state cleared. Restarting...")
-    st.rerun()
+        st.session_state.clear()
+        st.toast("✅ App state cleared. Restarting...")
+        st.rerun()
 
 # Document Embedding
 if df is not None:
@@ -115,44 +117,17 @@ if df is not None:
 
     try:
         vectorstore_doc = safe_embed(doc_chunks[:max_chunks])
+        rag_qa = RetrievalQA.from_chain_type(
+            llm=ChatOpenAI(temperature=0),
+            retriever=vectorstore_doc.as_retriever(),
+            return_source_documents=False
+        )
+        st.session_state.rag_qa_chain = rag_qa
     except Exception as e:
         st.error("⚠️ Token limit exceeded or embedding failed.")
         st.stop()
-
-    rag_qa = RetrievalQA.from_chain_type(
-        llm=ChatOpenAI(temperature=0),
-        retriever=vectorstore_doc.as_retriever(),
-        return_source_documents=False
-    )
-    st.session_state.rag_qa_chain = rag_qa
 else:
     st.warning("⚠️ No dataset selected. Please upload a file or toggle sample data.")
-
-@st.cache_resource(show_spinner="🔄 Embedding in progress...")
-def safe_embed(_chunks):
-    text = " ".join([str(doc.page_content) for doc in _chunks])
-    cache_key = md5(text.encode()).hexdigest()
-    cache_path = f".embedding_cache/{cache_key}.faiss"
-    if os.path.exists(cache_path):
-        return FAISS.load_local(cache_path, OpenAIEmbeddings())
-    else:
-        vs = FAISS.from_documents(_chunks, OpenAIEmbeddings())
-        os.makedirs(".embedding_cache", exist_ok=True)
-        vs.save_local(cache_path)
-        return vs
-
-try:
-    vectorstore_doc = safe_embed(doc_chunks[:max_chunks])
-except Exception as e:
-    st.error("⚠️ Token limit exceeded or embedding failed.")
-    st.stop()
-
-rag_qa = RetrievalQA.from_chain_type(
-    llm=ChatOpenAI(temperature=0),
-    retriever=vectorstore_doc.as_retriever(),
-    return_source_documents=False
-)
-st.session_state.rag_qa_chain = rag_qa
 
 # Chat Interface
 st.subheader("💬 Ask Questions About the Data")
@@ -181,11 +156,7 @@ if not sample_qas:
 
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = [random.choice(sample_qas)]
-example_queries = [
-    "Show billing trend for January",
-    "What is the average length of stay by condition?",
-    "How many patients were admitted last week?"
-]
+
 selected_example = st.selectbox("💡 Click an example to auto-fill the question box", [q for q, _ in sample_qas], index=0, key="example_prompt")
 user_input = st.text_input("💬 Ask your question:", value=selected_example)
 if not user_input.strip():
@@ -205,8 +176,8 @@ if user_input:
 
                 import tiktoken
                 encoding = tiktoken.encoding_for_model("gpt-3.5-turbo")
-                history_text = "".join([q + "" + a for q, a in st.session_state.chat_history])
-                all_context = history_text + "" + user_input
+                history_text = "\n".join([q + "\n" + a for q, a in st.session_state.chat_history])
+                all_context = history_text + "\n" + user_input
                 context_tokens_only = len(encoding.encode(history_text))
                 user_tokens = len(encoding.encode(user_input))
                 context_tokens = len(encoding.encode(all_context))
@@ -214,19 +185,11 @@ if user_input:
                     st.error("❌ Your input is too long.")
                     st.stop()
                 response = st.session_state.rag_qa_chain.run(user_input)
+                st.session_state.chat_history.append((user_input, response))
             except Exception as e:
                 st.error("⚠️ Something went wrong.")
                 st.write(f"**Error:** {e}")
                 st.stop()
-
-            st.session_state.chat_history.append((user_input, response))
-            response = st.session_state.rag_qa_chain.run(user_input)
-        except Exception as e:
-            st.error("⚠️ Something went wrong.")
-            st.write(f"**Error:** {e}")
-            st.stop()
-
-        st.session_state.chat_history.append((user_input, response))
 
         # 📊 Auto Charting Based on Keywords
         with st.expander("📊 Auto Insights", expanded=True):

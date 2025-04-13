@@ -126,7 +126,7 @@ if df is not None:
     doc_chunks = splitter.split_documents(docs)
 
     @st.cache_data
-def safe_embed(_chunks):
+    def safe_embed(_chunks):(_chunks):
         text = " ".join([str(doc.page_content) for doc in _chunks])
         cache_key = md5(text.encode()).hexdigest()
         cache_path = f".embedding_cache/{cache_key}.faiss"
@@ -159,11 +159,10 @@ if "chat_history" not in st.session_state:
             "👋 Welcome! I'm your Hospital Data Assistant.",
             "Upload a dataset or use the sample data to ask questions like:\n\n"
             "- What is the average length of stay by condition?\n"
-            "- Show billing trend for January?\n"
+            "- Show billing trend for January\n"
             "- How many patients were admitted last week?"
         )
     ]
-
 # Chat Interface
 
 

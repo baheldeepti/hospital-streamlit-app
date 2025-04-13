@@ -23,12 +23,13 @@ openai.api_key = st.secrets["OPENAI_API_KEY"]
 with st.sidebar.expander("📂 Dataset Configuration", expanded=True):
     use_sample_data = st.toggle("Use Sample Data Instead of Upload", value=True)
     uploaded_file = st.file_uploader("📁 Or upload your hospital dataset", type=["csv"])
-    if use_sample_data:
+if use_sample_data:
     sample_url = "https://github.com/baheldeepti/hospital-streamlit-app/raw/main/modified_healthcare_dataset.csv"
     df = pd.read_csv(sample_url)
     df['Date of Admission'] = pd.to_datetime(df['Date of Admission'])
     df['Discharge Date'] = pd.to_datetime(df['Discharge Date'])
     st.session_state.main_df = df
+
 elif uploaded_file:
     df = pd.read_csv(uploaded_file)
     df['Date of Admission'] = pd.to_datetime(df['Date of Admission'], errors='coerce')
@@ -204,9 +205,8 @@ if user_input:
 
                 import tiktoken
                 encoding = tiktoken.encoding_for_model("gpt-3.5-turbo")
-                history_text = "\n".join([q + "\n" + a for q, a in st.session_state.chat_history])
-                all_context = history_text + "\n" + user_input
-
+                history_text = "".join([q + "" + a for q, a in st.session_state.chat_history])
+                all_context = history_text + "" + user_input
                 context_tokens_only = len(encoding.encode(history_text))
                 user_tokens = len(encoding.encode(user_input))
                 context_tokens = len(encoding.encode(all_context))

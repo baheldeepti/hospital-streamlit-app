@@ -160,6 +160,10 @@ if "chat_history" not in st.session_state:
          "Upload a dataset or use the sample data to ask questions like:
 - What is the average length of stay by condition?
 - Show billing trend for January
+- How many patients were admitted last week?")
+         "Upload a dataset or use the sample data to ask questions like:
+- What is the average length of stay by condition?
+- Show billing trend for January
 - How many patients were admitted last week?")         "Upload a dataset or use the sample data to ask questions like:\n
 
 - What is the average length of stay by condition?

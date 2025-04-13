@@ -10,6 +10,8 @@ from langchain.document_loaders import TextLoader
 from langchain.text_splitter import CharacterTextSplitter
 from streamlit_chat import message
 import openai
+import altair as alt
+import numpy as np
 
 # Set API key
 openai.api_key = st.secrets["OPENAI_API_KEY"]
@@ -75,16 +77,8 @@ if uploaded_doc:
     )
     st.session_state.rag_qa_chain = rag_qa
 
-# Chat interface with speech and metrics
-import altair as alt
-import numpy as np
-import pyttsx3
-import tempfile
-import os
-
-# Optionally enable voice
-st.sidebar.markdown("### 🔈 Voice Output")
-speak_enabled = st.sidebar.checkbox("Enable Text-to-Speech")
+# Chat interface
+from sklearn.feature_extraction.text import CountVectorizer
 st.subheader("💬 Ask Questions About the Data or Policies")
 
 if "chat_history" not in st.session_state:
@@ -93,17 +87,52 @@ if "chat_history" not in st.session_state:
 user_input = st.text_input("Ask a question like 'How many ICU admissions last month?'")
 
 if user_input:
-    if speak_enabled:
-        engine = pyttsx3.init()
-        engine.setProperty('rate', 160)
     with st.spinner("Thinking..."):
         if "rag_qa_chain" in st.session_state:
             response = st.session_state.rag_qa_chain.run(user_input)
         else:
             response = qa_chain.run(user_input)
                 st.session_state.chat_history.append((user_input, response))
-        engine.say(response)
-        engine.runAndWait()
+
+        # Auto-tagging
+        tags = []
+        if any(word in user_input.lower() for word in ["bill", "cost"]):
+            tags.append("Billing")
+        if "stay" in user_input.lower():
+            tags.append("Length of Stay")
+        if "department" in user_input.lower():
+            tags.append("Department")
+        if tags:
+            st.markdown(f"**Tags:** {', '.join(tags)}")
+
+        # Visual summaries
+        if "billing by department" in user_input.lower():
+            chart_df = filtered_df.groupby("Department")["Billing Amount"].sum().reset_index()
+            chart = alt.Chart(chart_df).mark_bar().encode(
+                x="Department",
+                y="Billing Amount",
+                tooltip=["Department", "Billing Amount"]
+            ).properties(title="Total Billing by Department")
+            st.altair_chart(chart, use_container_width=True)
+
+        if "length of stay by department" in user_input.lower():
+            chart_df = filtered_df.groupby("Department")["Length of Stay"].mean().reset_index()
+            chart = alt.Chart(chart_df).mark_bar().encode(
+                x="Department",
+                y="Length of Stay",
+                tooltip=["Department", "Length of Stay"]
+            ).properties(title="Average Length of Stay by Department")
+            st.altair_chart(chart, use_container_width=True)
+
+        if "patient distribution" in user_input.lower():
+            pie_df = filtered_df["Department"].value_counts().reset_index()
+            pie_df.columns = ["Department", "Count"]
+            chart = alt.Chart(pie_df).mark_arc().encode(
+                theta="Count",
+                color="Department",
+                tooltip=["Department", "Count"]
+            ).properties(title="Patient Distribution by Department")
+            st.altair_chart(chart, use_container_width=True)
 
 for i, (q, a) in enumerate(st.session_state.chat_history):
     message(q, is_user=True, key=f"user_{i}")

@@ -21,8 +21,16 @@ st.sidebar.markdown("## 🤖 Chat Assistant")
 st.sidebar.markdown("Interact with hospital data or upload a policy document to enhance responses.")
 
 # Add department/date filter inputs
+# Add department/date filter inputs
 if 'main_df' not in st.session_state:
+    sample_url = "https://github.com/baheldeepti/hospital-streamlit-app/raw/main/modified_healthcare_dataset.csv"
+    df = pd.read_csv(sample_url)
+    df['Date of Admission'] = pd.to_datetime(df['Date of Admission'])
+    df['Discharge Date'] = pd.to_datetime(df['Discharge Date'])
     st.session_state.main_df = df
+else:
+    df = st.session_state.main_df
+
 
 dept_options = df["Department"].unique().tolist() if "Department" in df else []
 dept_filter = st.sidebar.multiselect("Filter by Department", options=dept_options, default=dept_options)

@@ -41,7 +41,7 @@ else:
 # 🔍 Data Glossary
 with st.sidebar.expander("📘 Data Glossary", expanded=False):
     if df is not None:
-        glossary = {   
+        glossary = {
             "patientid": "Unique identifier for each patient.",
             "age": "Age of the patient.",
             "gender": "Gender of the patient (Male/Female).",
@@ -67,10 +67,20 @@ with st.sidebar.expander("📘 Data Glossary", expanded=False):
 # 🔍 Data Preview & Stats
 with st.sidebar.expander("🔍 Data Preview & Stats"):
     if 'main_df' in st.session_state:
-        required_cols = st.multiselect("✅ Required Columns", [ "age", "gender", "bmi", "diagnosis", "blood_pressure",
+        task = st.selectbox("🎯 Select Analysis Type", ["Cost Analysis", "Readmission Prediction", "Lifestyle Risk Analysis"])
+
+        task_defaults = {
+            "Cost Analysis": ["charges", "length_of_stay", "diagnosis"],
+            "Readmission Prediction": ["readmitted", "age", "num_of_medications", "bmi"],
+            "Lifestyle Risk Analysis": ["smoking_history", "alcohol_consumption", "activity_level", "blood_pressure", "glucose"]
+        }
+
+        required_cols = st.multiselect("✅ Required Columns", [
+            "age", "gender", "bmi", "diagnosis", "blood_pressure",
             "glucose", "smoking_history", "alcohol_consumption",
             "activity_level", "num_of_medications", "length_of_stay",
-            "readmitted", "charges"], default=["Billing Amount", "Length of Stay"])
+            "readmitted", "charges"
+        ], default=task_defaults.get(task, []))
         df = st.session_state.main_df
         if set(required_cols).issubset(df.columns):
             st.success("✅ Dataset loaded successfully!")
@@ -116,7 +126,8 @@ if df is not None:
     doc_chunks = splitter.split_documents(docs)
 
     @st.cache_resource(show_spinner="🔄 Embedding in progress...")
-    def safe_embed(_chunks):
+    @st.cache_data
+def safe_embed(_chunks):
         text = " ".join([str(doc.page_content) for doc in _chunks])
         cache_key = md5(text.encode()).hexdigest()
         cache_path = f".embedding_cache/{cache_key}.faiss"
@@ -143,6 +154,21 @@ else:
     st.warning("⚠️ No dataset selected. Please upload a file or toggle sample data.")
 
 # Chat Interface
+if "chat_history" not in st.session_state:
+    st.session_state.chat_history = [
+        (
+            "👋 Welcome! I'm your Hospital Data Assistant.",
+            "Upload a dataset or use the sample data to ask questions like:
+
+"
+            "- What is the average length of stay by condition?
+"
+            "- Show billing trend for January
+"
+            "- How many patients were admitted last week?"
+        )
+    ]
+
 st.subheader("💬 Ask Questions About the Data")
 import random
 sample_qas = []
@@ -167,18 +193,12 @@ if not sample_qas:
         ("How do I get started?", "Please upload your hospital dataset or enable sample data to begin analysis.")
     ]
 
-if "chat_history" not in st.session_state:
-    st.session_state.chat_history = [
-        (
-            "👋 Welcome! I'm your Hospital Data Assistant.",
-            "Upload a dataset or use the sample data to ask questions like:\n\n"
-            "- What is the average length of stay by condition?\n"
-            "- Show billing trend for January\n"
-            "- How many patients were admitted last week?"
-        )
+",
+         "Upload a dataset or use the sample data to ask questions like:
+- What is the average length of stay by condition?
+- Show billing trend for January
+- How many patients were admitted last week?")
     ]
-
-
 
 selected_example = st.selectbox("💡 Click an example to auto-fill the question box", [q for q, _ in sample_qas], index=0, key="example_prompt")
 user_input = st.text_input("💬 Ask your question:", value=selected_example)
@@ -216,9 +236,8 @@ if user_input:
         # 📊 Auto Charting Based on Keywords
         with st.expander("📊 Auto Insights", expanded=True):
             if "billing trend" in user_input.lower():
-                if 'Date of Admission' in df.columns and 'Billing Amount' in df.columns:
-                    trend_df = df.groupby(df['Date of Admission'].dt.to_period("M"))['Billing Amount'].sum().reset_index()
-                    trend_df['Date of Admission'] = trend_df['Date of Admission'].dt.to_timestamp()
+                if 'diagnosis' in df.columns and 'charges' in df.columns:
+                    trend_df = df.groupby("diagnosis")["charges"].sum().reset_index().sort_values(by="charges", ascending=False)
                     st.altair_chart(
                         alt.Chart(trend_df).mark_line().encode(
                             x="Date of Admission:T", y="Billing Amount:Q"
@@ -226,8 +245,8 @@ if user_input:
                     )
 
             elif "average length of stay" in user_input.lower():
-                if 'Medical Condition' in df.columns and 'Length of Stay' in df.columns:
-                    avg_stay = df.groupby("Medical Condition")["Length of Stay"].mean().reset_index().sort_values(by="Length of Stay", ascending=False)
+                if 'diagnosis' in df.columns and 'length_of_stay' in df.columns:
+                    avg_stay = df.groupby("diagnosis")["length_of_stay"].mean().reset_index().sort_values(by="length_of_stay", ascending=False)
                     st.altair_chart(
                         alt.Chart(avg_stay).mark_bar().encode(
                             x="Length of Stay:Q", y=alt.Y("Medical Condition:N", sort='-x')

@@ -19,6 +19,36 @@ import numpy as np
 openai.api_key = st.secrets["OPENAI_API_KEY"]
 
 # Sidebar UI
+uploaded_file = st.sidebar.file_uploader("📁 Upload a CSV file to analyze", type=["csv"])
+if uploaded_file is not None:
+    df = pd.read_csv(uploaded_file)
+    df['Date of Admission'] = pd.to_datetime(df['Date of Admission'], errors='coerce')
+    df['Discharge Date'] = pd.to_datetime(df['Discharge Date'], errors='coerce')
+
+    # Preview & Validate Section
+st.sidebar.markdown("### 🔍 Preview & Validate")
+
+# Configurable required fields
+required_cols = st.sidebar.multiselect("✅ Required Columns", ["Billing Amount", "Length of Stay", "Medical Condition"], default=["Billing Amount", "Length of Stay"])
+if not set(required_cols).issubset(df.columns):
+        st.sidebar.error("❌ Uploaded file is missing required columns: Billing Amount and Length of Stay.")
+    else:
+        st.session_state.main_df = df
+        st.sidebar.success("✅ Custom dataset loaded successfully!")
+        st.sidebar.markdown("### 📊 Sample Preview")
+        st.sidebar.dataframe(df.head())
+
+        # Column stats
+        st.sidebar.markdown("### 📈 Column Stats")
+        col_stats = df[required_cols].describe(include='all').T
+        col_stats['missing'] = df[required_cols].isnull().sum()
+        col_stats['missing_pct'] = (col_stats['missing'] / len(df) * 100).round(2)
+
+        # Alert if missing % exceeds threshold
+        high_missing_cols = col_stats[col_stats['missing_pct'] > 25].index.tolist()
+        if high_missing_cols:
+            st.sidebar.warning(f"⚠️ High missing data in: {', '.join(high_missing_cols)}")
+        st.sidebar.dataframe(col_stats[['count', 'mean', 'min', 'max', 'missing']].fillna("-").astype(str))
 st.sidebar.markdown("## 🤖 Chat Assistant")
 st.sidebar.markdown("Ask questions based on filtered hospital data.")
 clear_cache = st.sidebar.button("🗑️ Clear Embedding Cache")
@@ -90,6 +120,9 @@ st.session_state.rag_qa_chain = rag_qa
 # Chat interface
 st.subheader("💬 Ask Questions About the Data")
 
+# Sidebar control for adjustable memory limit
+max_history = st.sidebar.slider("Max Chat History Length", min_value=5, max_value=20, value=10, step=1)
+
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
 
@@ -101,7 +134,28 @@ if not user_input.strip():
 
 if user_input:
     with st.spinner("Thinking..."):
-        response = st.session_state.rag_qa_chain.run(user_input)
+        try:
+            # Truncate long history to stay within 16K token limit
+            if len(st.session_state.chat_history) > max_history:
+                st.warning(f"🧠 Chat history truncated to the last {max_history} entries to prevent context overflow.")
+                st.session_state.chat_history = st.session_state.chat_history[-max_history:]
+
+            import tiktoken
+encoding = tiktoken.encoding_for_model("gpt-3.5-turbo")
+all_context = "
+".join([q + "
+" + a for q, a in st.session_state.chat_history]) + user_input
+context_tokens = len(encoding.encode(all_context))
+st.sidebar.markdown(f"🧾 Estimated context tokens: **{context_tokens}**")
+            if "token_log" not in st.session_state:
+                st.session_state.token_log = []
+            st.session_state.token_log.append({"prompt": user_input, "tokens": context_tokens})
+
+response = st.session_state.rag_qa_chain.run(user_input)
+        except Exception as e:
+            st.error("⚠️ Your question is too long or the context is too large. Please simplify your input or reduce the document size.")
+            st.write(f"**Error logged:** {e}")
+            st.stop()
         st.session_state.chat_history.append((user_input, response))
 
         # Auto-tagging
@@ -155,6 +209,12 @@ for i, (q, a) in enumerate(st.session_state.chat_history):
     message(a, key=f"bot_{i}")
 
 # CSV/Excel download of chat
+
+# Export token usage log
+if "token_log" in st.session_state:
+    token_df = pd.DataFrame(st.session_state.token_log)
+    token_csv = token_df.to_csv(index=False).encode("utf-8")
+    st.download_button("📥 Download Token Usage Log", data=token_csv, file_name="token_usage_log.csv", mime="text/csv")
 if st.session_state.chat_history:
     chat_df = pd.DataFrame(st.session_state.chat_history, columns=["User", "Assistant"])
     csv_data = chat_df.to_csv(index=False).encode("utf-8")

@@ -19,6 +19,12 @@ openai.api_key = st.secrets["OPENAI_API_KEY"]
 # Sidebar UI
 st.sidebar.markdown("## 🤖 Chat Assistant")
 st.sidebar.markdown("Ask questions based on filtered hospital data.")
+clear_cache = st.sidebar.button("🗑️ Clear Embedding Cache")
+if clear_cache:
+    import shutil
+    if os.path.exists(".embedding_cache"):
+        shutil.rmtree(".embedding_cache")
+        st.sidebar.success("Embedding cache cleared.")
 
 # Load hospital dataset
 if 'main_df' not in st.session_state:
@@ -51,36 +57,29 @@ loader = TextLoader(csv_path)
 docs = loader.load()
 splitter = CharacterTextSplitter(chunk_size=500, chunk_overlap=50)
 doc_chunks = splitter.split_documents(docs)
-limited_chunks = doc_chunks[:200]  # Limit to avoid exceeding token budget
-vectorstore = FAISS.from_documents(limited_chunks, OpenAIEmbeddings())
-retriever = vectorstore.as_retriever()
 
-qa_chain = RetrievalQA.from_chain_type(
-    llm=ChatOpenAI(temperature=0),
-    retriever=retriever,
-    return_source_documents=False
-)
+max_chunks = st.sidebar.slider("Max Chunks for Embedding", min_value=50, max_value=500, value=150, step=50)
+estimated_tokens = max_chunks * 500  # rough estimate, 500 tokens per chunk
+st.sidebar.markdown(f"🧠 Estimated tokens for embedding: **{estimated_tokens}**")
+if estimated_tokens > 900000:
+    st.sidebar.warning("⚠️ Estimated tokens exceed 900,000. You may hit your OpenAI plan's TPM limit.")
 
-# Document RAG upload
-uploaded_doc = st.sidebar.file_uploader("Upload the data (.csv)", type=["csv"])
-if uploaded_doc:
-    doc_df = pd.read_csv(uploaded_doc)
-    doc_text = doc_df.to_csv(index=False)
-    doc_path = "uploaded_policy.txt"
-    with open(doc_path, "w", encoding="utf-8") as f:
-        f.write(doc_text)
+from hashlib import md5
+import os
 
-    doc_loader = TextLoader(doc_path)
-    doc_chunks = CharacterTextSplitter(chunk_size=500, chunk_overlap=50).split_documents(doc_loader.load())
-    if len(doc_chunks) > 200:
-        st.warning("⚠️ Document is large — using only the first 200 chunks to avoid token limit errors.")
-    limited_doc_chunks = doc_chunks[:200]  # Limit to avoid token overload
-from time import sleep
-import tenacity
-
-@tenacity.retry(wait=tenacity.wait_exponential(multiplier=1, min=2, max=10), stop=tenacity.stop_after_attempt(5), retry=tenacity.retry_if_exception_type(Exception))
+@st.cache_resource(show_spinner="🔄 Embedding in progress...")
 def safe_embed(chunks):
-    return FAISS.from_documents(chunks, OpenAIEmbeddings())
+    text = " ".join([str(doc.page_content) for doc in chunks])
+    cache_key = md5(text.encode()).hexdigest()
+    cache_path = f".embedding_cache/{cache_key}.faiss"
+
+    if os.path.exists(cache_path):
+        return FAISS.load_local(cache_path, OpenAIEmbeddings())
+    else:
+        vs = FAISS.from_documents(chunks, OpenAIEmbeddings())
+        os.makedirs(".embedding_cache", exist_ok=True)
+        vs.save_local(cache_path)
+        return vs
 
 vectorstore_doc = safe_embed(limited_doc_chunks)
 

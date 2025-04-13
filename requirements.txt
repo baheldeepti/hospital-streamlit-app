@@ -5,6 +5,7 @@ seaborn
 scikit-learn
 prophet
 langchain
+langchain-experimental
 openai
 tiktoken
 streamlit-chat

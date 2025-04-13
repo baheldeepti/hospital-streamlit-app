@@ -20,6 +20,19 @@ from streamlit_chat import message
 openai.api_key = st.secrets["OPENAI_API_KEY"]
 
 # 🎨 Collapsible UI Sections
+with st.sidebar.expander("📊 Summary Stats", expanded=False):
+    if df is not None:
+        st.markdown("### 🔢 Key Dataset Stats")
+        st.metric("Total Records", len(df))
+        if "Billing Amount" in df.columns:
+            st.metric("Total Billing", f"${df['Billing Amount'].sum():,.2f}")
+        if "Length of Stay" in df.columns:
+            st.metric("Avg Stay (days)", f"{df['Length of Stay'].mean():.1f}")
+        if "Medical Condition" in df.columns:
+            top_cond = df['Medical Condition'].value_counts().idxmax()
+            st.metric("Top Condition", top_cond)
+    else:
+        st.info("No dataset loaded yet.")
 with st.sidebar.expander("📂 Dataset Configuration", expanded=True):
     use_sample_data = st.toggle("Use Sample Data Instead of Upload", value=True)
     uploaded_file = st.file_uploader("📁 Or upload your hospital dataset", type=["csv"])
@@ -40,25 +53,26 @@ else:
 
 # 🔍 Data Glossary
 with st.sidebar.expander("📘 Data Glossary", expanded=False):
+    st.markdown("### 🗂️ Column Descriptions")
     glossary = {
-    "Name": "Full name of the patient.",
-    "Age": "Age of the patient in years.",
-    "Gender": "Biological sex of the patient.",
-    "Blood Type": "Patient's blood group (A, B, AB, O).",
-    "Medical Condition": "Primary medical condition or diagnosis.",
-    "Date of Admission": "Date the patient was admitted to the hospital.",
-    "Doctor": "Primary physician assigned.",
-    "Hospital": "Name of the hospital facility.",
-    "Insurance Provider": "Health insurance provider name.",
-    "Billing Amount": "Total bill generated for the patient.",
-    "Room Number": "Assigned hospital room.",
-    "Admission Type": "Emergency, Routine, etc.",
-    "Discharge Date": "Date of discharge from hospital.",
-    "Medication": "Prescribed medication(s).",
-    "Test Results": "Lab or diagnostic test results.",
-    "Length of Stay": "Duration of hospitalization in days."
-}
-for col in glossary:
+        "Name": "Full name of the patient.",
+        "Age": "Age of the patient in years.",
+        "Gender": "Biological sex of the patient.",
+        "Blood Type": "Patient's blood group (A, B, AB, O).",
+        "Medical Condition": "Primary medical condition or diagnosis.",
+        "Date of Admission": "Date the patient was admitted to the hospital.",
+        "Doctor": "Primary physician assigned.",
+        "Hospital": "Name of the hospital facility.",
+        "Insurance Provider": "Health insurance provider name.",
+        "Billing Amount": "Total bill generated for the patient.",
+        "Room Number": "Assigned hospital room.",
+        "Admission Type": "Emergency, Routine, etc.",
+        "Discharge Date": "Date of discharge from hospital.",
+        "Medication": "Prescribed medication(s).",
+        "Test Results": "Lab or diagnostic test results.",
+        "Length of Stay": "Duration of hospitalization in days."
+    }
+    for col in glossary:
     st.markdown(f"- **{col}**: {glossary[col]}")
 
 # 🔍 Data Preview & Stats
@@ -66,24 +80,25 @@ with st.sidebar.expander("🔍 Data Preview & Stats"):
     if 'main_df' in st.session_state:
         task = st.selectbox("🎯 Select Analysis Type", [
     "Cost Analysis",
-    "Readmission Prediction",
-    "Lifestyle Risk Analysis",
-    "Demographics Overview",
-    "Clinical Metrics Summary"
+    "Clinical Trends",
+    "Demographics Summary",
+    "Treatment Overview"
 ])
 
+# Add Enter button to trigger analysis
+run_analysis = st.button("▶️ Run Analysis")
+
         task_defaults = {
-    "Cost Analysis": ["Billing Amount", "Medical Condition", "Hospital"],
-    "Readmission Prediction": ["Length of Stay", "Age", "Medical Condition"],
-    "Lifestyle Risk Analysis": ["Medical Condition", "Medication", "Test Results"],
-    "Demographics Overview": ["Age", "Gender", "Blood Type"],
-    "Clinical Metrics Summary": ["Length of Stay", "Test Results", "Medication"]
-}
+            "Cost Analysis": ["Billing Amount", "Hospital", "Insurance Provider"],
+            "Clinical Trends": ["Medical Condition", "Length of Stay", "Test Results"],
+            "Demographics Summary": ["Age", "Gender", "Blood Type"],
+            "Treatment Overview": ["Medication", "Doctor", "Length of Stay"]
+        }
 
         all_columns = list(glossary.keys())
         required_cols = st.multiselect("✅ Required Columns", all_columns, default=task_defaults.get(task, []))
         df = st.session_state.main_df
-        if set(required_cols).issubset(df.columns):
+        if run_analysis and set(required_cols).issubset(df.columns):
             st.success("✅ Dataset loaded successfully!")
             st.dataframe(df.head())
             col_stats = df[required_cols].describe(include='all').T
@@ -123,7 +138,7 @@ if df is not None:
     df.to_csv(csv_path, index=False)
     loader = TextLoader(csv_path)
     docs = loader.load()
-    splitter = CharacterTextSplitter(chunk_size=500, chunk_overlap=50)
+    splitter = CharacterTextSplitter(chunk_size=300, chunk_overlap=30)
     doc_chunks = splitter.split_documents(docs)
 
     @st.cache_data
@@ -140,7 +155,7 @@ if df is not None:
             return vs
 
     try:
-        vectorstore_doc = safe_embed(doc_chunks[:max_chunks])
+        vectorstore_doc = safe_embed(doc_chunks[:min(len(doc_chunks), max_chunks)])
         rag_qa = RetrievalQA.from_chain_type(
             llm=ChatOpenAI(temperature=0),
             retriever=vectorstore_doc.as_retriever(),
@@ -158,16 +173,34 @@ if "chat_history" not in st.session_state:
     st.session_state.chat_history = [
         (
             "👋 Welcome! I'm your Hospital Data Assistant.",
-            "Upload a dataset or use the sample data to ask questions like:\n\n"
-            "- What is the average length of stay by condition?\n"
-            "- Show billing trend for January\n"
+            "Upload a dataset or use the sample data to ask questions like:
+"
+            "- What is the average length of stay by condition?
+"
+            "- Show billing trend for January
+"
             "- How many patients were admitted last week?"
         )
     ]
 # Chat Interface
 
+# Personalize greeting with session state name if available
+user_name = "Hi"
+if "chat_history" not in st.session_state:
+    st.session_state.chat_history = [
+        (
+            f"{user_name} I'm your Hospital Data Assistant.",
+            "Upload a dataset or use the sample data to ask questions like:/n/n"
+            "- What is the average length of stay by condition?/n"
+            "- Show billing trend for January/n"
+            "- How many patients were admitted last week?"
+        )
+    ]
+
 
 st.subheader("💬 Ask Questions About the Data")
+st.caption("You can chat with the assistant like: 'Show top conditions by stay', or 'Average billing per hospital'.")
+st.markdown("Use the chat box below to ask natural language questions about your dataset.")
 # 📘 IMPORTS
 import streamlit as st
 import os

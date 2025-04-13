@@ -41,12 +41,22 @@ else:
 # 🔍 Data Glossary
 with st.sidebar.expander("📘 Data Glossary", expanded=False):
     if df is not None:
-        glossary = {
-            "Billing Amount": "Total charge billed to the patient or insurance.",
-            "Length of Stay": "Number of days a patient stayed in the hospital.",
-            "Medical Condition": "Primary diagnosis or condition for admission.",
-            "Date of Admission": "Date when the patient was admitted.",
-            "Discharge Date": "Date when the patient was discharged."
+        glossary = {   
+            "patientid": "Unique identifier for each patient.",
+            "age": "Age of the patient.",
+            "gender": "Gender of the patient (Male/Female).",
+            "weight": "Weight of the patient in kilograms.",
+            "bmi": "Body Mass Index calculated from height and weight.",
+            "diagnosis": "Primary diagnosis or reason for hospitalization.",
+            "blood_pressure": "Recorded blood pressure level (e.g., High/Normal).",
+            "glucose": "Blood glucose levels (e.g., Normal, High).",
+            "smoking_history": "Indicates if patient has a history of smoking.",
+            "alcohol_consumption": "Reported level of alcohol consumption.",
+            "activity_level": "Patient’s physical activity level.",
+            "num_of_medications": "Number of medications the patient is on.",
+            "length_of_stay": "Total number of days admitted in the hospital.",
+            "readmitted": "Whether the patient was readmitted (Yes/No).",
+            "charges": "Total hospital charges for the patient."
         }
         for col in df.columns:
             if col in glossary:
@@ -57,7 +67,10 @@ with st.sidebar.expander("📘 Data Glossary", expanded=False):
 # 🔍 Data Preview & Stats
 with st.sidebar.expander("🔍 Data Preview & Stats"):
     if 'main_df' in st.session_state:
-        required_cols = st.multiselect("✅ Required Columns", ["Billing Amount", "Length of Stay", "Medical Condition"], default=["Billing Amount", "Length of Stay"])
+        required_cols = st.multiselect("✅ Required Columns", [ "age", "gender", "bmi", "diagnosis", "blood_pressure",
+            "glucose", "smoking_history", "alcohol_consumption",
+            "activity_level", "num_of_medications", "length_of_stay",
+            "readmitted", "charges"], default=["Billing Amount", "Length of Stay"])
         df = st.session_state.main_df
         if set(required_cols).issubset(df.columns):
             st.success("✅ Dataset loaded successfully!")

@@ -153,7 +153,7 @@ def safe_embed(_chunks):
 else:
     st.warning("⚠️ No dataset selected. Please upload a file or toggle sample data.")
 
-# Chat Interface
+
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = [
         (
@@ -165,21 +165,8 @@ if "chat_history" not in st.session_state:
         )
     ]
 
+# Chat Interface
 
-#if "chat_history" not in st.session_state:
-    st.session_state.chat_history = [
-        (
-            "👋 Welcome! I'm your Hospital Data Assistant.",
-            "Upload a dataset or use the sample data to ask questions like:
-
-"
-            "- What is the average length of stay by condition?
-"
-            "- Show billing trend for January
-"
-            "- How many patients were admitted last week?"
-        )
-    ]
 
 st.subheader("💬 Ask Questions About the Data")
 import random
@@ -205,12 +192,7 @@ if not sample_qas:
         ("How do I get started?", "Please upload your hospital dataset or enable sample data to begin analysis.")
     ]
 
-",
-         "Upload a dataset or use the sample data to ask questions like:
-- What is the average length of stay by condition?
-- Show billing trend for January
-- How many patients were admitted last week?")
-    ]
+
 
 selected_example = st.selectbox("💡 Click an example to auto-fill the question box", [q for q, _ in sample_qas], index=0, key="example_prompt")
 user_input = st.text_input("💬 Ask your question:", value=selected_example)

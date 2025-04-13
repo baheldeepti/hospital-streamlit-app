@@ -166,6 +166,7 @@ if "chat_history" not in st.session_state:
     ]
 
 
+
 selected_example = st.selectbox("💡 Click an example to auto-fill the question box", [q for q, _ in sample_qas], index=0, key="example_prompt")
 user_input = st.text_input("💬 Ask your question:", value=selected_example)
 if not user_input.strip():

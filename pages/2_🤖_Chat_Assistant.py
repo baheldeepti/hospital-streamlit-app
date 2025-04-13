@@ -20,13 +20,13 @@ from streamlit_chat import message
 openai.api_key = st.secrets["OPENAI_API_KEY"]
 
 # 🎨 Collapsible UI Sections
-with st.sidebar.expander("\ud83d\udcc2 Dataset Configuration", expanded=True):
+with st.sidebar.expander("📂 Dataset Configuration", expanded=True):
     use_sample_data = st.toggle("Use Sample Data Instead of Upload", value=True)
-    uploaded_file = st.file_uploader("\ud83d\udcc1 Or upload your hospital dataset", type=["csv"])
+    uploaded_file = st.file_uploader("📁 Or upload your hospital dataset", type=["csv"])
     if use_sample_data:
-        st.info("\u2139\ufe0f Sample hospital dataset will be used.")
+        st.info("ℹ️ Sample hospital dataset will be used.")
     elif not uploaded_file:
-        st.warning("\u26a0\ufe0f Please upload a dataset to proceed or toggle on sample dataset.")
+        st.warning("⚠️ Please upload a dataset to proceed or toggle on sample dataset.")
 
 if use_sample_data:
     sample_url = "https://github.com/baheldeepti/hospital-streamlit-app/raw/main/modified_healthcare_dataset.csv"
@@ -43,40 +43,40 @@ else:
     st.stop()
 
 # 🔍 Data Preview
-with st.sidebar.expander("\ud83d\udd0d Data Preview & Stats"):
+with st.sidebar.expander("🔍 Data Preview & Stats"):
     if 'main_df' in st.session_state:
-        required_cols = st.multiselect("\u2705 Required Columns", ["Billing Amount", "Length of Stay", "Medical Condition"], default=["Billing Amount", "Length of Stay"])
+        required_cols = st.multiselect("✅ Required Columns", ["Billing Amount", "Length of Stay", "Medical Condition"], default=["Billing Amount", "Length of Stay"])
         df = st.session_state.main_df
         if set(required_cols).issubset(df.columns):
-            st.success("\u2705 Dataset loaded successfully!")
+            st.success("✅ Dataset loaded successfully!")
             st.dataframe(df.head())
             col_stats = df[required_cols].describe(include='all').T
             col_stats['missing'] = df[required_cols].isnull().sum()
             col_stats['missing_pct'] = (col_stats['missing'] / len(df) * 100).round(2)
             high_missing_cols = col_stats[col_stats['missing_pct'] > 25].index.tolist()
             if high_missing_cols:
-                st.warning(f"\u26a0\ufe0f High missing data in: {', '.join(high_missing_cols)}")
+                st.warning(f"⚠️ High missing data in: {', '.join(high_missing_cols)}")
             st.dataframe(col_stats[['count', 'mean', 'min', 'max', 'missing']].fillna("-").astype(str))
         else:
-            st.error("\u274c Required columns missing.")
+            st.error("❌ Required columns missing.")
             st.stop()
 
 # ⚙️ Embedding Settings
-with st.sidebar.expander("\u2699\ufe0f Embedding Settings"):
-    clear_cache = st.button("\ud83d\uddd1\ufe0f Clear Embedding Cache")
+with st.sidebar.expander("⚙️ Embedding Settings"):
+    clear_cache = st.button("🗑️ Clear Embedding Cache")
     if clear_cache and os.path.exists(".embedding_cache"):
         shutil.rmtree(".embedding_cache")
         st.success("Embedding cache cleared.")
     max_chunks = st.slider("Max Chunks for Embedding", min_value=50, max_value=500, value=150, step=50)
     estimated_tokens = max_chunks * 500
-    st.markdown(f"\U0001f9e0 Estimated tokens for embedding: **{estimated_tokens}**")
+    st.markdown(f"🧠 Estimated tokens for embedding: **{estimated_tokens}**")
     if estimated_tokens > 900000:
-        st.warning("\u26a0\ufe0f Estimated tokens exceed 900,000.")
+        st.warning("⚠️ Estimated tokens exceed 900,000.")
 
 # 🧠 Chat Settings
-with st.sidebar.expander("\U0001f9e0 Chat Settings"):
+with st.sidebar.expander("🧠 Chat Settings"):
     max_history = st.slider("Max Chat History Length", min_value=5, max_value=20, value=10, step=1)
-    if st.button("\ud83d\udd01 Reset App State"):
+    if st.button("🔁 Reset App State"):
         st.session_state.clear()
         st.experimental_rerun()
 
@@ -88,7 +88,7 @@ docs = loader.load()
 splitter = CharacterTextSplitter(chunk_size=500, chunk_overlap=50)
 doc_chunks = splitter.split_documents(docs)
 
-@st.cache_resource(show_spinner="\ud83d\udd04 Embedding in progress...")
+@st.cache_resource(show_spinner="🔄 Embedding in progress...")
 def safe_embed(_chunks):
     text = " ".join([str(doc.page_content) for doc in _chunks])
     cache_key = md5(text.encode()).hexdigest()
@@ -104,7 +104,7 @@ def safe_embed(_chunks):
 try:
     vectorstore_doc = safe_embed(doc_chunks[:max_chunks])
 except Exception as e:
-    st.error("\u26a0\ufe0f Token limit exceeded or embedding failed.")
+    st.error("⚠️ Token limit exceeded or embedding failed.")
     st.stop()
 
 rag_qa = RetrievalQA.from_chain_type(
@@ -115,7 +115,7 @@ rag_qa = RetrievalQA.from_chain_type(
 st.session_state.rag_qa_chain = rag_qa
 
 # Chat Interface
-st.subheader("\ud83d\udcac Ask Questions About the Data")
+st.subheader("💬 Ask Questions About the Data")
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
 example_queries = [
@@ -123,7 +123,7 @@ example_queries = [
     "What is the average length of stay by condition?",
     "How many patients were admitted last week?"
 ]
-st.selectbox("\ud83d\udca1 Example Queries", example_queries, index=0, key="example_prompt")
+st.selectbox("💡 Example Queries", example_queries, index=0, key="example_prompt")
 user_input = st.text_input("Ask a question like 'How many ICU admissions last month?'", value=st.session_state.example_prompt)
 if not user_input.strip():
     st.warning("Please enter a question.")
@@ -134,7 +134,7 @@ if user_input:
     with st.spinner("Thinking..."):
         try:
             if len(st.session_state.chat_history) > max_history:
-                st.warning(f"\U0001f9e0 Chat history truncated to last {max_history} entries.")
+                st.warning(f"🧠 Chat history truncated to last {max_history} entries.")
                 st.session_state.chat_history = st.session_state.chat_history[-max_history:]
 
             import tiktoken
@@ -145,18 +145,18 @@ if user_input:
             user_tokens = len(encoding.encode(user_input))
             context_tokens = len(encoding.encode(all_context))
             if user_tokens > 3000:
-                st.error("\u274c Your input is too long.")
+                st.error("❌ Your input is too long.")
                 st.stop()
             response = st.session_state.rag_qa_chain.run(user_input)
         except Exception as e:
-            st.error("\u26a0\ufe0f Something went wrong.")
+            st.error("⚠️ Something went wrong.")
             st.write(f"**Error:** {e}")
             st.stop()
 
         st.session_state.chat_history.append((user_input, response))
 
-        # \ud83e\uddea Auto Charting Based on Keywords
-        with st.expander("\ud83d\udcca Auto Insights", expanded=True):
+        # 📊 Auto Charting Based on Keywords
+        with st.expander("📊 Auto Insights", expanded=True):
             if "billing trend" in user_input.lower():
                 if 'Date of Admission' in df.columns and 'Billing Amount' in df.columns:
                     trend_df = df.groupby(df['Date of Admission'].dt.to_period("M"))['Billing Amount'].sum().reset_index()
@@ -194,4 +194,4 @@ for i, (q, a) in enumerate(st.session_state.chat_history):
 # Downloads
 if st.session_state.chat_history:
     chat_df = pd.DataFrame(st.session_state.chat_history, columns=["User", "Assistant"])
-    st.download_button("\ud83d\udcc5 Download Chat as CSV", data=chat_df.to_csv(index=False), file_name="chat_history.csv", mime="text/csv")
+    st.download_button("📅 Download Chat as CSV", data=chat_df.to_csv(index=False), file_name="chat_history.csv", mime="text/csv")

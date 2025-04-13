@@ -157,7 +157,7 @@ if not sample_qas:
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = [
         ("👋 Welcome! I'm your Hospital Data Assistant.",
-         "Upload a dataset or use the sample data to ask questions like:
+         "Upload a dataset or use the sample data to ask questions like:\n
 
 - What is the average length of stay by condition?
 - Show billing trend for January

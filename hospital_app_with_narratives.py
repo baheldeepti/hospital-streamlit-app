@@ -3,6 +3,7 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
+import streamlit.components.v1 as components
 from prophet import Prophet
 from sklearn.ensemble import IsolationForest
 from sklearn.preprocessing import LabelEncoder, StandardScaler
@@ -17,6 +18,12 @@ st.markdown("""
 Welcome! This dashboard turns complex hospital data into simple, visual stories.  
 Each chart or section has a small note to help **anyone, even a curious 15-year-old**, understand what's going on.
 """)
+
+# 🔗 Embedded Power BI Dashboard
+st.header("📊 Power BI Insights Dashboard")
+st.markdown("This embedded dashboard shows key hospital metrics like billing trends, patient counts, and length of stay across departments.")
+powerbi_url = "https://app.powerbi.com/reportEmbed?reportId=adba6afc-7417-4ef1-a069-a4c9b7287a7b&autoAuth=true&ctid=81a7563b-844e-45bb-a4f0-b2f1ed65acb7"
+components.iframe(powerbi_url, width=1000, height=600, scrolling=True)
 
 file = st.file_uploader("📁 Upload your hospital dataset (.csv)", type=["csv"])
 

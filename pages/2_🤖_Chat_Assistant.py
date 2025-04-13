@@ -62,12 +62,15 @@ qa_chain = RetrievalQA.from_chain_type(
 )
 
 # Document RAG upload
-uploaded_doc = st.sidebar.file_uploader("Upload Policy Doc (.txt)", type=["txt"])
+uploaded_doc = st.sidebar.file_uploader("Upload the data (.csv)", type=["csv"])
 if uploaded_doc:
-    with open(uploaded_doc.name, "w", encoding="utf-8") as f:
-        f.write(uploaded_doc.getvalue().decode("utf-8"))
+    doc_df = pd.read_csv(uploaded_doc)
+    doc_text = doc_df.to_csv(index=False)
+    doc_path = "uploaded_policy.txt"
+    with open(doc_path, "w", encoding="utf-8") as f:
+        f.write(doc_text)
 
-    doc_loader = TextLoader(uploaded_doc.name)
+    doc_loader = TextLoader(doc_path)
     doc_chunks = CharacterTextSplitter(chunk_size=500, chunk_overlap=50).split_documents(doc_loader.load())
     if len(doc_chunks) > 200:
         st.warning("⚠️ Document is large — using only the first 200 chunks to avoid token limit errors.")
@@ -81,21 +84,25 @@ def safe_embed(chunks):
 
 vectorstore_doc = safe_embed(limited_doc_chunks)
 
-    rag_qa = RetrievalQA.from_chain_type(
-        llm=ChatOpenAI(temperature=0),
-        retriever=vectorstore_doc.as_retriever(),
-        return_source_documents=False
-    )
-    st.session_state.rag_qa_chain = rag_qa
+rag_qa = RetrievalQA.from_chain_type(
+    llm=ChatOpenAI(temperature=0),
+    retriever=vectorstore_doc.as_retriever(),
+    return_source_documents=False
+)
+st.session_state.rag_qa_chain = rag_qa
 
 # Chat interface
 from sklearn.feature_extraction.text import CountVectorizer
-st.subheader("💬 Ask Questions About the Data or Policies")
+st.subheader("💬 Ask Questions About the Data")
 
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
 
 user_input = st.text_input("Ask a question like 'How many ICU admissions last month?'")
+
+if not user_input.strip():
+    st.warning("Please enter a question.")
+    st.stop()
 
 if user_input:
     with st.spinner("Thinking..."):

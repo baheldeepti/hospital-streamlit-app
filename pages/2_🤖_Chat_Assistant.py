@@ -161,14 +161,6 @@ if "chat_history" not in st.session_state:
 - What is the average length of stay by condition?
 - Show billing trend for January
 - How many patients were admitted last week?")
-         "Upload a dataset or use the sample data to ask questions like:
-- What is the average length of stay by condition?
-- Show billing trend for January
-- How many patients were admitted last week?")         "Upload a dataset or use the sample data to ask questions like:\n
-
-- What is the average length of stay by condition?
-- Show billing trend for January
-- How many patients were admitted last week?")
     ]
 
 selected_example = st.selectbox("💡 Click an example to auto-fill the question box", [q for q, _ in sample_qas], index=0, key="example_prompt")

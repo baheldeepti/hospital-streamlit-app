@@ -1,6 +1,7 @@
 # 💬 CHATBOT SECTION: Integrated with Main App
 
 # Import all required packages for chatbot
+import streamlit as st
 from langchain_experimental.agents import create_pandas_dataframe_agent
 from langchain.chat_models import ChatOpenAI
 from streamlit_chat import message

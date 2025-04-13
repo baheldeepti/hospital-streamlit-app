@@ -158,6 +158,18 @@ if "chat_history" not in st.session_state:
     st.session_state.chat_history = [
         (
             "👋 Welcome! I'm your Hospital Data Assistant.",
+            "Upload a dataset or use the sample data to ask questions like:\n\n"
+            "- What is the average length of stay by condition?\n"
+            "- Show billing trend for January\n"
+            "- How many patients were admitted last week?"
+        )
+    ]
+
+
+#if "chat_history" not in st.session_state:
+    st.session_state.chat_history = [
+        (
+            "👋 Welcome! I'm your Hospital Data Assistant.",
             "Upload a dataset or use the sample data to ask questions like:
 
 "

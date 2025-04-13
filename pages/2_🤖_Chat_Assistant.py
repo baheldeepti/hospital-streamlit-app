@@ -187,52 +187,54 @@ if not user_input.strip():
 if user_input:
     with st.spinner("Thinking..."):
         try:
-            # Truncate long history to stay within 16K token limit
+            # Truncate chat history
             if len(st.session_state.chat_history) > max_history:
                 st.warning(f"🧠 Chat history truncated to the last {max_history} entries to prevent context overflow.")
                 st.session_state.chat_history = st.session_state.chat_history[-max_history:]
 
             import tiktoken
             encoding = tiktoken.encoding_for_model("gpt-3.5-turbo")
+
             all_context = "
 ".join([q + "
 " + a for q, a in st.session_state.chat_history]) + "
 " + user_input
-
-            # Token breakdown
-            user_tokens = len(encoding.encode(user_input))
             context_tokens_only = len(encoding.encode("
 ".join([q + "
 " + a for q, a in st.session_state.chat_history])))
-            st.sidebar.markdown(f"🧾 Prompt tokens: **{user_tokens}**, Context tokens: **{context_tokens_only}**, Total: **{context_tokens}**")
-
-            # Limit user input length
-            if user_tokens > 3000:
-                st.error("❌ Your input is too long. Please shorten your question.")
-                st.info("💡 Try rephrasing your query more concisely. Avoid full reports or large lists—focus on one question at a time, like 'Show billing trend for January'.")
-                if st.button("✨ Rephrase for me"):
-    with st.spinner("Generating rephrased version..."):
-        try:
-            rephrase_prompt = f"Please rewrite this user query to be shorter and more concise for a data chatbot:
-
-{user_input}"
-            completion = openai.ChatCompletion.create(
-                model="gpt-3.5-turbo",
-                messages=[{"role": "user", "content": rephrase_prompt}],
-                temperature=0.5,
-                max_tokens=150
-            )
-            rephrased_query = completion.choices[0].message.content.strip()
-            st.text_area("✨ Rephrased Query", value=rephrased_query, height=100)
-        except Exception as e:
-            st.error("Unable to generate rephrased version.")
-            st.write(f"Error: {e}")
-                st.stop()
+            user_tokens = len(encoding.encode(user_input))
             context_tokens = len(encoding.encode(all_context))
-st.sidebar.markdown(f"🧾 Estimated context tokens: **{context_tokens}**")
+
+            st.sidebar.markdown(f"🧾 Prompt tokens: **{user_tokens}**, Context tokens: **{context_tokens_only}**, Total: **{context_tokens}**")
+            st.sidebar.markdown(f"🧾 Estimated context tokens: **{context_tokens}**")
+
             if "token_log" not in st.session_state:
                 st.session_state.token_log = []
             st.session_state.token_log.append({"prompt": user_input, "tokens": context_tokens})
+
+            # Limit input length
+            if user_tokens > 3000:
+                st.error("❌ Your input is too long. Please shorten your question.")
+                st.info("💡 Try rephrasing your query more concisely. Avoid full reports or large lists—focus on one question at a time, like 'Show billing trend for January'.")
+
+                if st.button("✨ Rephrase for me"):
+                    with st.spinner("Generating rephrased version..."):
+                        try:
+                            rephrase_prompt = f"Please rewrite this user query to be shorter and more concise for a data chatbot:
+
+{user_input}"
+                            completion = openai.ChatCompletion.create(
+                                model="gpt-3.5-turbo",
+                                messages=[{"role": "user", "content": rephrase_prompt}],
+                                temperature=0.5,
+                                max_tokens=150
+                            )
+                            rephrased_query = completion.choices[0].message.content.strip()
+                            st.text_area("✨ Rephrased Query", value=rephrased_query, height=100)
+                        except Exception as e:
+                            st.error("Unable to generate rephrased version.")
+                            st.write(f"Error: {e}")
+                st.stop()
 
             response = st.session_state.rag_qa_chain.run(user_input)
         except Exception as e:

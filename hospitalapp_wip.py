@@ -1,8 +1,5 @@
-
-st.set_page_config(page_title="Hospital Insights", layout="wide")
 # 📘 Introduction
 import streamlit as st
-
 st.set_page_config(page_title="Hospital Data Assistant", layout="wide")
 
 # Animated header

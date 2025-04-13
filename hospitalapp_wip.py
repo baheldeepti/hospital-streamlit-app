@@ -1,7 +1,5 @@
 # 📘 Introduction
 import streamlit as st
-from streamlit_lottie import st_lottie
-import requests
 
 # Page setup
 st.set_page_config(
@@ -10,25 +8,11 @@ st.set_page_config(
     page_icon="🏥"
 )
 
-# Load Lottie animation from URL
-def load_lottie_url(url: str):
-    r = requests.get(url)
-    if r.status_code != 200:
-        return None
-    return r.json()
-
-lottie_url = "https://lottie.host/5e5aa1c7-1781-4ed5-b05f-00584e963b48/oBHF65wAbI.json"
-lottie_animation = load_lottie_url(lottie_url)
-
-# Display animated header
-st_lottie(
-    lottie_animation,
-    speed=1,
-    reverse=False,
-    loop=True,
-    quality="high",
-    height=300,
-    key="hospital-animation"
+# Static header image (replace with your own banner if needed)
+st.image(
+    "https://cdn-icons-png.flaticon.com/512/2965/2965567.png",  # Cute hospital icon
+    caption="Interactive Hospital Insights",
+    use_column_width=True
 )
 
 # Title

@@ -156,17 +156,15 @@ if not sample_qas:
 
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = [
-        ("👋 Welcome! I'm your Hospital Data Assistant.",
-         "Upload a dataset or use the sample data to ask questions like:
-- What is the average length of stay by condition?
-- Show billing trend for January
-- How many patients were admitted last week?")
-    ]",
-         "Upload a dataset or use the sample data to ask questions like:
-- What is the average length of stay by condition?
-- Show billing trend for January
-- How many patients were admitted last week?")
+        (
+            "👋 Welcome! I'm your Hospital Data Assistant.",
+            "Upload a dataset or use the sample data to ask questions like:\n\n"
+            "- What is the average length of stay by condition?\n"
+            "- Show billing trend for January\n"
+            "- How many patients were admitted last week?"
+        )
     ]
+
 
 selected_example = st.selectbox("💡 Click an example to auto-fill the question box", [q for q, _ in sample_qas], index=0, key="example_prompt")
 user_input = st.text_input("💬 Ask your question:", value=selected_example)

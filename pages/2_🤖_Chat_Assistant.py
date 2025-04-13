@@ -83,6 +83,7 @@ def safe_embed(chunks):
         vs.save_local(cache_path)
         return vs
 
+limited_doc_chunks = doc_chunks[:max_chunks]
 vectorstore_doc = safe_embed(limited_doc_chunks)
 
 rag_qa = RetrievalQA.from_chain_type(

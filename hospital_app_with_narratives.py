@@ -82,7 +82,7 @@ if file:
     model.fit(X_train_scaled, y_train)
     y_pred = model.predict(X_test_scaled)
 
-    st.code("This model correctly predicts most abnormal cases.
+   st.code("This model correctly predicts most abnormal cases.\\n\\n" + classification_report(y_test, y_pred))
 
 " + classification_report(y_test, y_pred))
 

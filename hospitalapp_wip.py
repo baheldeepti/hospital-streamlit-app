@@ -8,13 +8,6 @@ st.set_page_config(
     page_icon="🏥"
 )
 
-# Static header image (replace with your own banner if needed)
-st.image(
-    "https://cdn-icons-png.flaticon.com/512/2965/2965567.png",  # Cute hospital icon
-    caption="Interactive Hospital Insights",
-    use_column_width=True
-)
-
 # Title
 st.title("🏥 Hospital Data Assistant")
 

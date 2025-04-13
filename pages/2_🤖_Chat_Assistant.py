@@ -24,11 +24,6 @@ with st.sidebar.expander("📂 Dataset Configuration", expanded=True):
     use_sample_data = st.toggle("Use Sample Data Instead of Upload", value=True)
     uploaded_file = st.file_uploader("📁 Or upload your hospital dataset", type=["csv"])
     if use_sample_data:
-        st.info("ℹ️ Sample hospital dataset will be used.")
-    elif not uploaded_file:
-        st.warning("⚠️ Please upload a dataset to proceed or toggle on sample dataset.")
-
-if use_sample_data:
     sample_url = "https://github.com/baheldeepti/hospital-streamlit-app/raw/main/modified_healthcare_dataset.csv"
     df = pd.read_csv(sample_url)
     df['Date of Admission'] = pd.to_datetime(df['Date of Admission'])
@@ -40,9 +35,23 @@ elif uploaded_file:
     df['Discharge Date'] = pd.to_datetime(df['Discharge Date'], errors='coerce')
     st.session_state.main_df = df
 else:
-    st.stop()
+    df = None
 
 # 🔍 Data Preview
+with st.sidebar.expander("📘 Data Glossary", expanded=False):
+    if df is not None:
+        glossary = {
+            "Billing Amount": "Total charge billed to the patient or insurance.",
+            "Length of Stay": "Number of days a patient stayed in the hospital.",
+            "Medical Condition": "Primary diagnosis or condition for admission.",
+            "Date of Admission": "Date when the patient was admitted.",
+            "Discharge Date": "Date when the patient was discharged."
+        }
+        for col in df.columns:
+            if col in glossary:
+                st.markdown(f"- **{col}**: {glossary[col]}")
+            else:
+                st.markdown(f"- **{col}**: _(No description available)_")
 with st.sidebar.expander("🔍 Data Preview & Stats"):
     if 'main_df' in st.session_state:
         required_cols = st.multiselect("✅ Required Columns", ["Billing Amount", "Length of Stay", "Medical Condition"], default=["Billing Amount", "Length of Stay"])
@@ -77,16 +86,46 @@ with st.sidebar.expander("⚙️ Embedding Settings"):
 with st.sidebar.expander("🧠 Chat Settings"):
     max_history = st.slider("Max Chat History Length", min_value=5, max_value=20, value=10, step=1)
     if st.button("🔁 Reset App State"):
-        st.session_state.clear()
-        st.experimental_rerun()
+    st.session_state.clear()
+    st.success("✅ App state cleared. Restarting...")
+    st.rerun()
 
 # Document Embedding
-csv_path = "filtered_data.txt"
-df.to_csv(csv_path, index=False)
-loader = TextLoader(csv_path)
-docs = loader.load()
-splitter = CharacterTextSplitter(chunk_size=500, chunk_overlap=50)
-doc_chunks = splitter.split_documents(docs)
+if df is not None:
+    csv_path = "filtered_data.txt"
+    df.to_csv(csv_path, index=False)
+    loader = TextLoader(csv_path)
+    docs = loader.load()
+    splitter = CharacterTextSplitter(chunk_size=500, chunk_overlap=50)
+    doc_chunks = splitter.split_documents(docs)
+
+    @st.cache_resource(show_spinner="🔄 Embedding in progress...")
+    def safe_embed(_chunks):
+        text = " ".join([str(doc.page_content) for doc in _chunks])
+        cache_key = md5(text.encode()).hexdigest()
+        cache_path = f".embedding_cache/{cache_key}.faiss"
+        if os.path.exists(cache_path):
+            return FAISS.load_local(cache_path, OpenAIEmbeddings())
+        else:
+            vs = FAISS.from_documents(_chunks, OpenAIEmbeddings())
+            os.makedirs(".embedding_cache", exist_ok=True)
+            vs.save_local(cache_path)
+            return vs
+
+    try:
+        vectorstore_doc = safe_embed(doc_chunks[:max_chunks])
+    except Exception as e:
+        st.error("⚠️ Token limit exceeded or embedding failed.")
+        st.stop()
+
+    rag_qa = RetrievalQA.from_chain_type(
+        llm=ChatOpenAI(temperature=0),
+        retriever=vectorstore_doc.as_retriever(),
+        return_source_documents=False
+    )
+    st.session_state.rag_qa_chain = rag_qa
+else:
+    st.warning("⚠️ No dataset selected. Please upload a file or toggle sample data.")
 
 @st.cache_resource(show_spinner="🔄 Embedding in progress...")
 def safe_embed(_chunks):
@@ -116,37 +155,73 @@ st.session_state.rag_qa_chain = rag_qa
 
 # Chat Interface
 st.subheader("💬 Ask Questions About the Data")
+import random
+sample_qas = []
+if df is not None:
+    if 'Length of Stay' in df.columns and 'Medical Condition' in df.columns:
+        sample_qas.append((
+            "What is the average length of stay by condition?",
+            "Here is a breakdown of the average stay for each condition."
+        ))
+    if 'Date of Admission' in df.columns:
+        sample_qas.append((
+            "How many patients were admitted in the last month?",
+            "Let's look at the admissions over the past 30 days."
+        ))
+    if 'Billing Amount' in df.columns:
+        sample_qas.append((
+            "Show billing trend for January.",
+            "Here's the billing trend for January."
+        ))
+if not sample_qas:
+    sample_qas = [
+        ("How do I get started?", "Please upload your hospital dataset or enable sample data to begin analysis.")
+    ]
+
 if "chat_history" not in st.session_state:
-    st.session_state.chat_history = []
+    st.session_state.chat_history = [random.choice(sample_qas)]
 example_queries = [
     "Show billing trend for January",
     "What is the average length of stay by condition?",
     "How many patients were admitted last week?"
 ]
-st.selectbox("💡 Example Queries", example_queries, index=0, key="example_prompt")
-user_input = st.text_input("Ask a question like 'How many ICU admissions last month?'", value=st.session_state.example_prompt)
+selected_example = st.selectbox("💡 Click an example to auto-fill the question box", [q for q, _ in sample_qas], index=0, key="example_prompt")
+user_input = st.text_input("💬 Ask your question:", value=selected_example)
 if not user_input.strip():
     st.warning("Please enter a question.")
     st.stop()
 
 # Generate response
 if user_input:
-    with st.spinner("Thinking..."):
-        try:
-            if len(st.session_state.chat_history) > max_history:
-                st.warning(f"🧠 Chat history truncated to last {max_history} entries.")
-                st.session_state.chat_history = st.session_state.chat_history[-max_history:]
+    if df is None or 'rag_qa_chain' not in st.session_state:
+        st.error("⚠️ Please upload a dataset or enable sample data before asking questions.")
+    else:
+        with st.spinner("Thinking..."):
+            try:
+                if len(st.session_state.chat_history) > max_history:
+                    st.warning(f"🧠 Chat history truncated to last {max_history} entries.")
+                    st.session_state.chat_history = st.session_state.chat_history[-max_history:]
 
-            import tiktoken
-            encoding = tiktoken.encoding_for_model("gpt-3.5-turbo")
-            history_text = "\n".join([q + "\n" + a for q, a in st.session_state.chat_history])
-            all_context = history_text + "\n" + user_input
-            context_tokens_only = len(encoding.encode(history_text))
-            user_tokens = len(encoding.encode(user_input))
-            context_tokens = len(encoding.encode(all_context))
-            if user_tokens > 3000:
-                st.error("❌ Your input is too long.")
+                import tiktoken
+                encoding = tiktoken.encoding_for_model("gpt-3.5-turbo")
+                history_text = "
+".join([q + "
+" + a for q, a in st.session_state.chat_history])
+                all_context = history_text + "
+" + user_input
+                context_tokens_only = len(encoding.encode(history_text))
+                user_tokens = len(encoding.encode(user_input))
+                context_tokens = len(encoding.encode(all_context))
+                if user_tokens > 3000:
+                    st.error("❌ Your input is too long.")
+                    st.stop()
+                response = st.session_state.rag_qa_chain.run(user_input)
+            except Exception as e:
+                st.error("⚠️ Something went wrong.")
+                st.write(f"**Error:** {e}")
                 st.stop()
+
+            st.session_state.chat_history.append((user_input, response))
             response = st.session_state.rag_qa_chain.run(user_input)
         except Exception as e:
             st.error("⚠️ Something went wrong.")

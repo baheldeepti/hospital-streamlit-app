@@ -81,9 +81,9 @@ if file:
     model = LogisticRegression(max_iter=1000)
     model.fit(X_train_scaled, y_train)
     y_pred = model.predict(X_test_scaled)
-    st.code("This model correctly predicts most abnormal cases.\\n\\n" + classification_report(y_test, y_pred))
 
-" + classification_report(y_test, y_pred))
+    report = classification_report(y_test, y_pred)
+    st.code("This model correctly predicts most abnormal cases.\n\n" + report)
 
     st.header("🧪 Patient Clusters")
     st.markdown("Here we group patients into 4 types based on age, cost, and stay time. Think of it like patient **personalities**! 😊")

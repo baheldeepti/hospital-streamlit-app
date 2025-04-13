@@ -204,11 +204,9 @@ if user_input:
 
                 import tiktoken
                 encoding = tiktoken.encoding_for_model("gpt-3.5-turbo")
-                history_text = "
-".join([q + "
-" + a for q, a in st.session_state.chat_history])
-                all_context = history_text + "
-" + user_input
+                history_text = "\n".join([q + "\n" + a for q, a in st.session_state.chat_history])
+                all_context = history_text + "\n" + user_input
+
                 context_tokens_only = len(encoding.encode(history_text))
                 user_tokens = len(encoding.encode(user_input))
                 context_tokens = len(encoding.encode(all_context))

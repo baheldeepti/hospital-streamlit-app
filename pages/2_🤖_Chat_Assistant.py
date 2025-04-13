@@ -1,3 +1,4 @@
+
 # 💬 CHATBOT SECTION: Integrated with Main App using a safer structured agent
 
 import streamlit as st
@@ -14,7 +15,6 @@ import altair as alt
 import numpy as np
 import os  
 import shutil
-
 # Set API key
 openai.api_key = st.secrets["OPENAI_API_KEY"]
 
@@ -70,15 +70,15 @@ from hashlib import md5
 import os
 
 @st.cache_resource(show_spinner="🔄 Embedding in progress...")
-def safe_embed(chunks):
-    text = " ".join([str(doc.page_content) for doc in chunks])
+def safe_embed(_chunks):
+    text = " ".join([str(doc.page_content) for doc in _chunks])
     cache_key = md5(text.encode()).hexdigest()
     cache_path = f".embedding_cache/{cache_key}.faiss"
 
     if os.path.exists(cache_path):
         return FAISS.load_local(cache_path, OpenAIEmbeddings())
     else:
-        vs = FAISS.from_documents(chunks, OpenAIEmbeddings())
+        vs = FAISS.from_documents(_chunks, OpenAIEmbeddings())
         os.makedirs(".embedding_cache", exist_ok=True)
         vs.save_local(cache_path)
         return vs

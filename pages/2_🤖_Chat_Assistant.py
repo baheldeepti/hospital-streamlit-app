@@ -1,3 +1,46 @@
+# 📘 Introduction
+
+st.set_page_config(page_title="Hospital Data Assistant", layout="wide")
+
+# Animated header
+st.image("https://lottie.host/5e5aa1c7-1781-4ed5-b05f-00584e963b48/oBHF65wAbI.json", caption="Interactive Hospital Insights", use_column_width=True)
+
+st.title("🏥 Hospital Data Assistant")
+
+# Collapsible section
+with st.expander("ℹ️ How it works"):
+    st.markdown("""
+    - 📁 Upload your hospital dataset or use a sample
+    - 🧠 Ask questions like “What was the average billing last month?”
+    - 📊 See auto-generated visualizations
+    - 💬 Download chatbot conversations and usage logs
+    """)
+
+# Links
+st.markdown("""
+### 👩‍💻 About the Developer
+This app was built by [Deepti Bahel](https://www.linkedin.com/in/deepti-bahel/) to help turn complex hospital data into insights using AI.
+
+Check out the full source code and contribute on GitHub:
+""")
+col1, col2 = st.columns(2)
+with col1:
+    st.link_button("🌐 GitHub Repo", "https://github.com/baheldeepti/hospital-streamlit-app/tree/main")
+with col2:
+    st.link_button("👤 LinkedIn Profile", "https://www.linkedin.com/in/deepti-bahel/")
+
+st.markdown("""
+Welcome to the **Hospital Data Assistant** 👋
+
+This tool lets you:
+- 🔍 Upload and explore hospital datasets
+- 🤖 Ask data-driven questions using a chatbot
+- 📊 Visualize insights (like trends and patient stats)
+- 📁 Export chat logs and token usage
+
+Upload your data or use the sample to get started!
+""")
+
 # 💬 CHATBOT SECTION: Integrated with Main App using a safer structured agent
 
 import os
@@ -31,8 +74,8 @@ st.sidebar.markdown("### 🔍 Preview & Validate")
 # Configurable required fields
 required_cols = st.sidebar.multiselect("✅ Required Columns", ["Billing Amount", "Length of Stay", "Medical Condition"], default=["Billing Amount", "Length of Stay"])
 if not set(required_cols).issubset(df.columns):
-        st.sidebar.error("❌ Uploaded file is missing required columns: Billing Amount and Length of Stay.")
-    else:
+    st.sidebar.error("❌ Uploaded file is missing required columns: Billing Amount and Length of Stay.")
+else:
         st.session_state.main_df = df
         st.sidebar.success("✅ Custom dataset loaded successfully!")
         st.sidebar.markdown("### 📊 Sample Preview")
@@ -141,17 +184,17 @@ if user_input:
                 st.session_state.chat_history = st.session_state.chat_history[-max_history:]
 
             import tiktoken
-encoding = tiktoken.encoding_for_model("gpt-3.5-turbo")
-all_context = "
+            encoding = tiktoken.encoding_for_model("gpt-3.5-turbo")
+            all_context = "
 ".join([q + "
 " + a for q, a in st.session_state.chat_history]) + user_input
-context_tokens = len(encoding.encode(all_context))
+            context_tokens = len(encoding.encode(all_context))
 st.sidebar.markdown(f"🧾 Estimated context tokens: **{context_tokens}**")
             if "token_log" not in st.session_state:
                 st.session_state.token_log = []
             st.session_state.token_log.append({"prompt": user_input, "tokens": context_tokens})
 
-response = st.session_state.rag_qa_chain.run(user_input)
+            response = st.session_state.rag_qa_chain.run(user_input)
         except Exception as e:
             st.error("⚠️ Your question is too long or the context is too large. Please simplify your input or reduce the document size.")
             st.write(f"**Error logged:** {e}")

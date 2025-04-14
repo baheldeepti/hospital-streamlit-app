@@ -7,10 +7,12 @@ import altair as alt
 import os
 from datetime import datetime
 from streamlit_chat import message
+import openai  
 from langchain.chat_models import ChatOpenAI
 from langchain_experimental.agents import create_pandas_dataframe_agent
 from langchain.prompts import PromptTemplate
 from langchain.llms import OpenAI
+
 
 # 🌐 ENV + CONFIG
 openai_api_key = st.secrets.get("OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY")

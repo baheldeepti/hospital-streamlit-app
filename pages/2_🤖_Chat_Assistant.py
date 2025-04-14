@@ -109,6 +109,33 @@ if "Date of Admission" in filtered_df.columns:
     except Exception as e:
         debug_log(f"Trend chart error: {e}")
 
+
+# 🔁 Suggested Chart Generator
+def generate_chart_for_suggestion(s):
+    if "billing trend" in s.lower():
+        if "Date of Admission" in filtered_df.columns:
+            data = filtered_df.groupby("Date of Admission")["Billing Amount"].sum().reset_index()
+            chart = alt.Chart(data).mark_line().encode(
+                x="Date of Admission:T", y="Billing Amount:Q"
+            ).properties(title="📉 Billing Trend by Admission Date")
+            st.altair_chart(chart, use_container_width=True)
+            export_csv(data, "billing_trend")
+    elif "gender" in s.lower():
+        data = filtered_df["Gender"].value_counts().reset_index()
+        data.columns = ["Gender", "Count"]
+        chart = alt.Chart(data).mark_bar().encode(
+            x="Gender:N", y="Count:Q", tooltip=["Gender", "Count"]
+        )
+        st.altair_chart(chart, use_container_width=True)
+        export_csv(data, "gender_distribution")
+    elif "insurance" in s.lower():
+        data = filtered_df.groupby("Insurance Provider")["Billing Amount"].sum().reset_index()
+        chart = alt.Chart(data).mark_bar().encode(
+            x="Insurance Provider:N", y="Billing Amount:Q", tooltip=["Insurance Provider", "Billing Amount"]
+        )
+        st.altair_chart(chart, use_container_width=True)
+        export_csv(data, "billing_by_insurance")
+
 # 🤖 Respond to Query
 def respond_to_query(query):
     try:
@@ -116,14 +143,12 @@ def respond_to_query(query):
         return agent.run(query)
     except Exception:
         st.session_state["fallback_log"].append(query)
-        return """🤖 I’m not able to understand that question right now.
+        return "🤖 I’m not able to understand that question.
 
-**Try asking something like:**
+Try:
 - *Total billing by hospital*
 - *Average stay per condition*
-- *Top conditions by test result*
-"""
-
+- *Top conditions by test result*"
 
 # 💬 Chat Assistant
 st.subheader("💬 Chat Assistant")
@@ -140,6 +165,7 @@ for i, s in enumerate(suggestions):
         response = respond_to_query(s)
         st.session_state["chat_history"].append((s, response))
         st.session_state["query_log"][s] = st.session_state["query_log"].get(s, 0) + 1
+        generate_chart_for_suggestion(s)  # 🎯 Trigger corresponding chart
 
 for i, (q, a) in enumerate(st.session_state["chat_history"]):
     message(q, is_user=True, key=f"user_{i}")
@@ -153,6 +179,7 @@ with st.form("chat_form", clear_on_submit=True):
         st.session_state["chat_history"].append((user_input, response))
         st.session_state["query_log"][user_input] = st.session_state["query_log"].get(user_input, 0) + 1
         st.expander("📋 Copy Response").code(response)
+
 
 # 📖 Narrative Insights
 st.subheader("📖 Narrative Insights")

@@ -119,6 +119,6 @@ chat_df = pd.DataFrame(st.session_state.chat_history, columns=["User", "Assistan
 st.download_button("🗎 Download Chat Log", data=chat_df.to_csv(index=False), file_name="chat_log.csv")
 
 # 🔗 Page Navigation
-st.page_link("pages/1_📊_Dashboard.py", label="📊Dashboard", icon="📊")
-st.page_link("pages/4_Dashboard_Feature_Overview.py", label="📊Dashboard Feature Overview", icon="📊")
-st.page_link("pages/3__Chat_Assistant_Feature_Overview.py", label="📄Chat Assistant Feature Overview", icon="📄")
+st.page_link("pages/1_📊_Dashboard.py", label="Dashboard", icon="📊")
+st.page_link("pages/4_Dashboard_Feature_Overview.py", label="Dashboard Feature Overview", icon="📄")
+st.page_link("pages/3__Chat_Assistant_Feature_Overview.py", label="Chat Assistant Feature Overview")

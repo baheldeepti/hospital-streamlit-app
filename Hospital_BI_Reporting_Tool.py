@@ -1,52 +1,45 @@
-# 📘 Introduction
 import streamlit as st
 
-# Page setup
+# ✅ Page Setup
 st.set_page_config(
     page_title="Hospital BI Reporting Tool",
     layout="wide",
     page_icon="🏥"
 )
 
-# Title
+# ✅ App Title
 st.title("🏥 Hospital BI Reporting Tool")
 
-# ℹ️ How It Works
-with st.expander("ℹ️ How it works", expanded=False):
-    st.markdown("""
-    Welcome to the **Hospital BI Reporting Tool** 👋  
-    This tool helps you uncover powerful insights from hospital datasets using AI.  
+# ℹ️ Welcome Message
+st.markdown("""
+Welcome to the **Hospital Business Intelligence Reporting Tool**!
 
-    **Steps to get started:**
-    - 📁 Upload your hospital dataset or use the built-in sample
-    - 🤖 Ask questions like “What was the average billing last month?”
-    - 📊 View auto-generated visualizations instantly
-    - 💬 Download chat history and usage logs
-    """)
+This tool allows users to analyze hospital data using AI, explore visual dashboards, and gain operational insights with ease.
+""")
+
+# 📘 How It Works Section
+with st.expander("ℹ️ How It Works", expanded=False):
+    st.markdown("""
+1. 📁 Navigate to the **Dashboard** to view key performance metrics.
+2. 🤖 Use the **Chat Assistant** to ask natural language questions about the data.
+3. 📊 Explore **Feature Overview** sections to understand the tool's capabilities.
+4. 🧠 Download chat history, query logs, and charts as needed.
+
+> You can either upload your own hospital dataset or load the sample dataset from within those pages.
+""")
+
+# 🔗 Navigation Links
+st.markdown("### 🔗 Navigate to:")
+
+st.page_link("pages/1_📊_Dashboard.py", label="📊 Dashboard")
+st.page_link("pages/2_🤖_Chat_Assistant.py", label="🤖 Chat Assistant")
+st.page_link("pages/4_Dashboard_Feature_Overview.py", label="📘 Dashboard Feature Overview")
+st.page_link("pages/3__Chat_Assistant_Feature_Overview.py", label="📄 Chat Assistant Feature Overview")
 
 # 👩‍💻 About the Developer
 st.markdown("### 👩‍💻 About the Developer")
 st.markdown("""
-Built with ❤️ by [Deepti Bahel](https://www.linkedin.com/in/deepti-bahel/), this app turns hospital data into conversational insights with the help of AI and interactive charts.
+Built by **Deepti Bahel**, this app combines data engineering, AI, and intuitive dashboards to help hospitals turn raw data into actionable insights.
 
-Explore the code, contribute, or connect!
+[Connect on LinkedIn](https://www.linkedin.com/in/deepti-bahel/)
 """)
-
-col1, col2 = st.columns(2)
-with col1:
-    st.link_button("🌐 GitHub Repo", "https://github.com/baheldeepti/hospital-streamlit-app/tree/main")
-with col2:
-    st.link_button("👤 LinkedIn Profile", "https://www.linkedin.com/in/deepti-bahel/")
-
-# Intro Section Call-to-Action
-st.markdown("""
----
-
-### 🚀 What You Can Do Here:
-- 🔍 Upload and explore hospital datasets
-- 🧠 Ask data-related questions in plain English
-- 📊 View trends and statistical charts instantly
-- 📥 Export chat logs and prompt token usage for audit or reference
-
-
-

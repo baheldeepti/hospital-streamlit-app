@@ -3,18 +3,18 @@ import streamlit as st
 
 # Page setup
 st.set_page_config(
-    page_title="Hospital Data Assistant",
+    page_title="Hospital BI Reporting Tool",
     layout="wide",
     page_icon="🏥"
 )
 
 # Title
-st.title("🏥 Hospital Data Assistant")
+st.title("🏥 Hospital BI Reporting Tool")
 
 # ℹ️ How It Works
 with st.expander("ℹ️ How it works", expanded=False):
     st.markdown("""
-    Welcome to the **Hospital Data Assistant** 👋  
+    Welcome to the **Hospital BI Reporting Tool** 👋  
     This tool helps you uncover powerful insights from hospital datasets using AI.  
 
     **Steps to get started:**

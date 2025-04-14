@@ -239,3 +239,7 @@ if st.session_state.fallback_log:
 if st.session_state.chat_history:
     chat_df = pd.DataFrame(st.session_state.chat_history, columns=["User", "Assistant"])
     st.download_button("🗎 Download Chat History (CSV)", data=chat_df.to_csv(index=False), file_name="chat_history.csv")
+    
+st.page_link("pages/1_📊_Dashboard.py", label="📊Dashboard", icon="📊")
+st.page_link("pages/4_Dashboard_Feature_Overview.py", label="📊Dashboard Feature Overview", icon="📊")
+st.page_link("pages/3_📄_Feature_Overview.py", label="📄Chat Assistant Feature Overview", icon="📄")

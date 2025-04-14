@@ -1,6 +1,6 @@
 import streamlit as st
 
-st.set_page_config(page_title="📄 Feature Overview", layout="wide")
+st.set_page_config(page_title="Chat Assistant Feature Overview", layout="wide")
 st.title("📄 Hospital Chat Assistant - Feature Overview")
 
 with open("docs/feature_overview.md", "r") as f:

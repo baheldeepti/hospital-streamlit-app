@@ -1,5 +1,4 @@
-
-# 📘 Hospital Chat Assistant - v1.4.0 DEPLOYMENT READY
+# 📘 Hospital Chat Assistant - v1.4.1 (Free-form Query Enhanced)
 
 import streamlit as st
 import pandas as pd
@@ -16,7 +15,7 @@ from datetime import datetime
 openai.api_key = st.secrets.get("OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY")
 
 # 📊 Page Setup
-st.set_page_config(page_title="🤖 Hospital Chat Assistant", layout="wide")
+st.set_page_config(page_title="\U0001F916 Hospital Chat Assistant", layout="wide")
 st.title("🏥 Hospital Chat Assistant")
 
 # 🐞 Debug Mode
@@ -39,72 +38,6 @@ def log_event(event_type, detail):
         "type": event_type,
         "detail": detail
     })
-# ℹ️ About Section
-with st.sidebar.expander("ℹ️ About This App"):
-    st.markdown("""
-    **Hospital Chat Assistant** is your AI-powered hospital data explorer.
-    - 📊 Analyze patient billing, admissions, and more
-    - 🤖 Chat with an AI to uncover insights
-    - 📈 Visualize trends and generate summaries
-    """)
-
-# 📁 Load or Upload Data
-with st.sidebar.expander("📁 Load or Upload Dataset", expanded=True):
-    st.markdown("Upload your own CSV or try the sample dataset.")
-    if st.button("Load Sample Dataset"):
-        sample_url = "https://raw.githubusercontent.com/baheldeepti/hospital-streamlit-app/main/modified_healthcare_dataset.csv"
-        df = pd.read_csv(sample_url)
-        st.session_state["main_df"] = df
-        st.success("✅ Sample dataset loaded.")
-        log_event("dataset_loaded", "sample")
-    uploaded = st.file_uploader("Upload your CSV", type=["csv"])
-    if uploaded:
-        df = pd.read_csv(uploaded)
-        st.session_state["main_df"] = df
-        st.success("✅ File uploaded successfully.")
-        log_event("dataset_loaded", "user_csv")
-# 🛑 Check Data
-if "main_df" not in st.session_state:
-    st.warning("🚨 Please load or upload a dataset to proceed.")
-    st.stop()
-
-df = st.session_state["main_df"]
-df["Billing Amount"] = pd.to_numeric(df["Billing Amount"].replace('[\$,]', '', regex=True), errors="coerce")
-df["Length of Stay"] = pd.to_numeric(df.get("Length of Stay", pd.Series(dtype=float)), errors="coerce")
-
-# 🔍 Filters
-st.sidebar.markdown("### 🔎 Filter Data")
-hospitals = st.sidebar.multiselect("Hospital", df["Hospital"].dropna().unique())
-insurances = st.sidebar.multiselect("Insurance Provider", df["Insurance Provider"].dropna().unique())
-conditions = st.sidebar.multiselect("Medical Condition", df["Medical Condition"].dropna().unique())
-
-filtered_df = df.copy()
-if hospitals: filtered_df = filtered_df[filtered_df["Hospital"].isin(hospitals)]
-if insurances: filtered_df = filtered_df[filtered_df["Insurance Provider"].isin(insurances)]
-if conditions: filtered_df = filtered_df[filtered_df["Medical Condition"].isin(conditions)]
-
-# 💾 Init State
-for key in ["chat_history", "query_log", "fallback_log"]:
-    if key not in st.session_state:
-        st.session_state[key] = [] if key != "query_log" else {}
-
-# 📈 KPIs
-st.subheader("📈 Summary KPIs")
-c1, c2, c3 = st.columns(3)
-c1.metric("💰 Total Billing", f"${filtered_df['Billing Amount'].sum():,.2f}")
-c2.metric("🛏️ Avg Stay", f"{filtered_df['Length of Stay'].mean():.1f} days")
-c3.metric("👥 Total Patients", f"{filtered_df['Name'].nunique()}")
-# 📉 Trend Chart
-if "Date of Admission" in filtered_df.columns:
-    try:
-        filtered_df["Date of Admission"] = pd.to_datetime(filtered_df["Date of Admission"], errors="coerce")
-        trend = filtered_df.groupby("Date of Admission")["Billing Amount"].sum().reset_index()
-        chart = alt.Chart(trend).mark_line(point=True).encode(
-            x="Date of Admission:T", y="Billing Amount:Q"
-        ).properties(title="📉 Billing Trend Over Time")
-        st.altair_chart(chart, use_container_width=True)
-    except Exception as e:
-        debug_log(f"Trend chart error: {e}")
 
 # 🧩 Helper: Chart Generator from Query Keywords
 def generate_chart_for_query(query):
@@ -161,7 +94,7 @@ def respond_to_query(query):
     except Exception as e:
         st.session_state["fallback_log"] = st.session_state.get("fallback_log", [])
         st.session_state["fallback_log"].append(query)
-        return "🤖 I couldn’t understand that. Try a question like: 'Total billing by hospital' or 'Average stay over time'."
+        return "\U0001F916 I couldn’t understand that. Try a question like: 'Total billing by hospital' or 'Average stay over time'."
 
 # UI for chat history and input
 for i, (q, a) in enumerate(st.session_state["chat_history"]):
@@ -175,14 +108,6 @@ with st.form("chat_form", clear_on_submit=True):
         response = respond_to_query(user_input)
         st.session_state["chat_history"].append((user_input, response))
         st.expander("📋 Copy Response").code(response)
-
-# ✅ Debug Snapshot
-if DEBUG_MODE:
-    st.markdown("### 🧪 Debug Snapshot")
-    st.write("Chat History", st.session_state.get("chat_history"))
-    st.write("Usage Log", st.session_state.get("usage_log"))
-    st.write("Fallback Log", st.session_state.get("fallback_log"))
-
 
 # 📖 Narrative Insights
 st.subheader("📖 Narrative Insights")

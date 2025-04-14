@@ -140,7 +140,8 @@ st.markdown("""
 - **Abnormal Test Prediction**: Using factors like age and medication, we can fairly accurately guess if a test might be abnormal.
 - **Patient Clusters**: Patients can be grouped by age, cost, and time spent, helping hospitals personalize care or optimize processes.
 """)
-
+# 🔗 Page Navigation
 st.page_link("pages/2_🤖_Chat_Assistant.py", label="🤖Chat Assistant")
-st.page_link("pages/4_Dashboard_Feature_Overview.py", label="Dashboard Feature Overview")
-st.page_link("pages/3__Chat_Assistant_Feature_Overview.py", label="Chat Assistant Feature Overview")
+# st.page_link("pages/1_📊_Dashboard.py", label="📊 Dashboard")
+st.page_link("pages/4_Dashboard_Feature_Overview.py", label="📘 Dashboard Feature Overview")
+st.page_link("pages/3__Chat_Assistant_Feature_Overview.py", label="📄 Chat Assistant Feature Overview")

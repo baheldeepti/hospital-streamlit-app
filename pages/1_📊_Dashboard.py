@@ -1,4 +1,3 @@
-
 # 📘 Hospital Chat Assistant - v1.4.3 STREAMLIT DEPLOYMENT VERSION
 
 import streamlit as st
@@ -9,11 +8,11 @@ from streamlit_chat import message
 from langchain.chat_models import ChatOpenAI
 from langchain_experimental.agents import create_pandas_dataframe_agent
 from datetime import datetime
+import openai
+from openai import OpenAI
 
 # 🌐 ENV + CONFIG
 openai_api_key = st.secrets.get("OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY")
-from openai import OpenAI
-import openai
 openai.api_key = openai_api_key
 
 st.set_page_config(page_title="🤖 Hospital Chat Assistant", layout="wide")
@@ -24,23 +23,19 @@ def debug_log(msg):
     if DEBUG_MODE:
         st.sidebar.markdown(f"🔍 **Debug**: {msg}")
 
+
 # 🔁 Session Init
 for key in ["main_df", "chat_history", "query_log", "fallback_log", "usage_log"]:
     if key not in st.session_state:
         st.session_state[key] = [] if "log" in key or "history" in key else None
 
-FALLBACK_RESPONSE = (
-    "🤖 I’m not able to understand that question right now.
+FALLBACK_RESPONSE = """🤖 I’m not able to understand that question right now.
 
-"
-    "**Try asking something like:**
-"
-    "- *Total billing by hospital*
-"
-    "- *Average stay per condition*
-"
-    "- *Top conditions by test result*"
-)
+**Try asking something like:**
+- *Total billing by hospital*
+- *Average stay per condition*
+- *Top conditions by test result*"""
+
 
 # 📁 Load Data UI
 def load_data_ui():
@@ -61,6 +56,7 @@ def load_data_ui():
                 except Exception as e:
                     st.error(f"Error loading file: {e}")
 
+
 # 🔍 Filters
 def apply_filters(df):
     st.sidebar.markdown("### 🔎 Filter Data")
@@ -72,12 +68,14 @@ def apply_filters(df):
     if conditions: df = df[df["Medical Condition"].isin(conditions)]
     return df
 
+
 # 📈 KPI Cards
 def render_kpis(df):
     c1, c2, c3 = st.columns(3)
     c1.metric("💰 Total Billing", f"${df['Billing Amount'].sum():,.2f}")
     c2.metric("🛏️ Avg Stay", f"{df['Length of Stay'].mean():.1f} days")
     c3.metric("👥 Total Patients", f"{df['Name'].nunique()}")
+
 
 # 📉 Billing Trend
 def render_billing_trend(df):
@@ -89,17 +87,21 @@ def render_billing_trend(df):
     ).properties(title="Total Billing Over Time")
     st.altair_chart(chart, use_container_width=True)
 
+
 # 📊 Modular Chart Functions
 def render_bar_chart_with_labels(data, x_col, y_col, title):
     base = alt.Chart(data).mark_bar().encode(x=alt.X(x_col, sort="-y"), y=y_col, tooltip=[x_col, y_col])
     labels = alt.Chart(data).mark_text(dy=-5).encode(x=x_col, y=y_col, text=y_col)
     st.altair_chart(base + labels, use_container_width=True)
+
 def render_line_chart_with_labels(data, x_col, y_col, title):
     chart = alt.Chart(data).mark_line(point=True).encode(x=x_col, y=y_col, tooltip=[x_col, y_col]).properties(title=title)
     st.altair_chart(chart, use_container_width=True)
+
 def render_pie_chart_with_tooltips(data, category_col, value_col):
     chart = alt.Chart(data).mark_arc(innerRadius=50).encode(theta=value_col, color=category_col, tooltip=[category_col, value_col])
     st.altair_chart(chart, use_container_width=True)
+
 
 # 🔁 Chart Mapping
 keyword_chart_map = {
@@ -116,7 +118,6 @@ def match_chart_mapping(query):
             return keyword_chart_map[key]
     return None
 
-# 🤖 Respond to Query
 def respond_to_query(query, df):
     chart_config = match_chart_mapping(query)
     if chart_config:
@@ -136,7 +137,6 @@ def respond_to_query(query, df):
                 return f"📈 Line chart shown for: {query}"
         except Exception as e:
             return f"⚠️ Could not generate chart: {e}"
-    # Fallback to GPT Agent
     try:
         agent = create_pandas_dataframe_agent(ChatOpenAI(temperature=0), df=df, verbose=False)
         return agent.run(query)
@@ -160,13 +160,15 @@ def render_chat(df):
             st.session_state["chat_history"].append((s, reply))
             st.session_state["query_log"].append(s)
     for i, (q, a) in enumerate(st.session_state["chat_history"]):
-        message(q, is_user=True, key=f"u_{i}"); message(a, key=f"a_{i}")
+        message(q, is_user=True, key=f"u_{i}")
+        message(a, key=f"a_{i}")
     with st.form("chat_form", clear_on_submit=True):
         user_input = st.text_input("Ask anything about the data")
         if st.form_submit_button("Send") and user_input:
             reply = respond_to_query(user_input, df)
             st.session_state["chat_history"].append((user_input, reply))
             st.session_state["query_log"].append(user_input)
+
 
 # 📖 Narrative Insights
 def render_narrative_summary(df):
@@ -175,13 +177,13 @@ def render_narrative_summary(df):
         with st.spinner("Analyzing data..."):
             try:
                 from langchain.prompts import PromptTemplate
-                prompt = PromptTemplate.from_template("Give 3 insights from:
-{summary}")
+                prompt = PromptTemplate.from_template("Give 3 insights from:\n{summary}")
                 summary_text = df.describe(include='all').to_string()
                 summary = OpenAI(temperature=0)(prompt.format(summary=summary_text))
                 st.markdown(summary)
             except Exception as e:
                 st.error(f"Error: {e}")
+
 
 # 📊 Advanced Insights
 def render_advanced_charts(df):
@@ -202,7 +204,8 @@ def render_advanced_charts(df):
         data.columns = [column, "Count"]
         render_pie_chart_with_tooltips(data, column, "Count")
 
-# 📥 Logs + Leaderboard
+
+# 🏆 Leaderboard & Logs
 def render_logs():
     st.subheader("🏆 Leaderboard & Logs")
     if st.session_state["query_log"]:
@@ -213,6 +216,7 @@ def render_logs():
     if st.session_state["fallback_log"]:
         st.markdown("### Fallback Queries")
         st.dataframe(pd.DataFrame(st.session_state["fallback_log"], columns=["Query"]))
+
 
 # 📘 Glossary
 def render_glossary():
@@ -227,13 +231,13 @@ def render_glossary():
         }
         search = st.session_state.get("glossary_search", "").lower()
         matches = [f"- **{k}**: {v}" for k, v in glossary.items() if search in k.lower()]
-        st.markdown("
-".join(matches) if matches else "❌ No match found.")
+        st.markdown("\n".join(matches) if matches else "❌ No match found.")
 
 # 🔗 Footer
 def render_footer():
     st.markdown("---")
     st.markdown("Made with ❤️ by Deepti Bahel | Powered by Streamlit + LangChain + Altair")
+
 
 # 🚀 MAIN FLOW
 load_data_ui()

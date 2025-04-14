@@ -14,6 +14,7 @@ from langchain_experimental.agents import create_pandas_dataframe_agent
 import openai
 from datetime import datetime
 import logging
+import time
 
 # 🔐 OpenAI Key Setup
 openai.api_key = st.secrets.get("OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY")
@@ -193,15 +194,21 @@ st.marst.markdown("### 📊 Advanced Insights")
 with st.form("chat_form", clear_on_submit=True):
     user_input = st.text_input("Ask a question", placeholder="E.g. Average stay by condition")
     submitted = st.form_submit_button("Send")
+    
     if submitted and user_input:
         st.session_state.last_chat_query = user_input
+        typing_box = st.empty()
+        typing_box.markdown("🤖 Assistant is typing...")
+        time.sleep(1.2)
         response = respond_to_query(user_input)
+        typing_box.empty()
         st.session_state.chat_history.append((user_input, response))
+        log_event("chat_query", user_input)
+
+        # 📋 Copy to clipboard
         with st.expander("📋 Copy Response"):
             st.code(response, language="markdown")
-
-
-        log_event("chat_query", user_input)
+log_event("chat_query", user_input)
 
 st.markdown("### 📊 Advanced Insights")
 

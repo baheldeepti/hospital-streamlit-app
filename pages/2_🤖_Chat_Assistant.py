@@ -101,6 +101,13 @@ with st.sidebar.expander("🔍 Data Glossary"):
         if st.session_state.glossary_search.lower() in term.lower():
             st.markdown(f"- **{term}**: {desc}")
 
+
+# 💾 Ensure session keys are initialized
+for key in ["chat_history", "query_log", "fallback_log"]:
+    if key not in st.session_state:
+        st.session_state[key] = [] if key != "query_log" else {}
+
+
 # 🧩 Multi-Selection Filters
 st.sidebar.markdown("### 🔎 Apply Filters")
 hospitals = st.sidebar.multiselect("Filter by Hospital", df["Hospital"].dropna().unique())

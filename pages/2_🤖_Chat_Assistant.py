@@ -9,12 +9,27 @@ from langchain.chat_models import ChatOpenAI
 from langchain_experimental.agents import create_pandas_dataframe_agent
 from datetime import datetime
 import openai
+from langchain.llms import OpenAI
+
 
 # 🌐 ENV + CONFIG
 openai.api_key = st.secrets.get("OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY")
 
 st.set_page_config(page_title="🤖 Hospital Chat Assistant", layout="wide")
 st.title("🏥 Hospital Chat Assistant")
+
+# 🧭 Welcome Instructions
+st.markdown("""
+👋 **Welcome to the Hospital Chat Assistant App!**
+
+This app helps you:
+- Analyze hospital data 📊  
+- Chat with an AI assistant 🤖  
+- Generate summaries, trends, and charts automatically!
+
+👉 Please **upload your CSV** or click **Load Sample Data** in the sidebar to get started.
+""")
+
 
 DEBUG_MODE = st.sidebar.checkbox("🐞 Debug Mode")
 def debug_log(msg):
@@ -168,6 +183,9 @@ def render_chat(df):
 # 📖 Narrative Insights
 def render_narrative_summary(df):
     st.subheader("📖 Narrative Insights")
+    llm = OpenAI(temperature=0)
+
+
     if st.button("Generate Summary"):
         with st.spinner("Analyzing data..."):
             try:
@@ -176,7 +194,7 @@ def render_narrative_summary(df):
                     "You are a healthcare analyst. Based on the dataset summary below, provide 3 key insights:\n\n{summary}"
                 )
                 summary_text = df.describe(include='all').to_string()
-                summary = OpenAI(temperature=0)(prompt.format(summary=summary_text))
+                summary = llm(prompt.format(summary=summary_text))
                 st.success("✅ Summary generated")
                 st.markdown(summary)
             except Exception as e:

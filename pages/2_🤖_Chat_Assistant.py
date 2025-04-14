@@ -28,7 +28,7 @@ with st.sidebar.expander("ℹ️ About This App", expanded=False):
 with st.sidebar.expander("📁 Load or Upload Dataset", expanded=True):
     if st.button("Load Sample Hospital Data"):
         try:
-            sample_url = "https://github.com/baheldeepti/hospital-streamlit-app/blob/main/modified_healthcare_dataset.csv"
+            sample_url = "https://raw.githubusercontent.com/baheldeepti/hospital-streamlit-app/main/modified_healthcare_dataset.csv"
             df = pd.read_csv(sample_url)
             st.session_state["main_df"] = df
             st.success("✅ Sample data loaded.")

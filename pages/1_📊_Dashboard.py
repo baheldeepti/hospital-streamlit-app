@@ -143,4 +143,4 @@ st.markdown("""
 
 st.page_link("pages/2_🤖_Chat_Assistant.py", label="🤖Chat Assistant", icon="📊")
 st.page_link("pages/4_Dashboard_Feature_Overview.py", label="📊Dashboard Feature Overview", icon="📊")
-st.page_link("pages/3__ChatAssistantFeature_Overview.py", label="📄Chat Assistant Feature Overview", icon="📄")
+st.page_link("pages/3__Chat_Assistant_Feature_Overview.py", label="📄Chat Assistant Feature Overview", icon="📄")

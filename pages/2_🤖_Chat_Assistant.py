@@ -21,9 +21,9 @@ st.title("🏥 Hospital Chat Assistant")
 
 # 🐞 Debug Mode
 DEBUG_MODE = st.sidebar.checkbox("🐞 Enable Debug Mode")
-def debug_log(msg):
+def debug_log(message_text):
     if DEBUG_MODE:
-        st.sidebar.markdown(f"🔍 **Debug**: {msg}")
+        st.sidebar.markdown(f"🔍 **Debug**: {message_text}")
 
 # 📦 CSV Export Helper
 def export_csv(dataframe, filename):
@@ -39,7 +39,6 @@ def log_event(event_type, detail):
         "type": event_type,
         "detail": detail
     })
-
 # ℹ️ About Section
 with st.sidebar.expander("ℹ️ About This App"):
     st.markdown("""
@@ -64,7 +63,6 @@ with st.sidebar.expander("📁 Load or Upload Dataset", expanded=True):
         st.session_state["main_df"] = df
         st.success("✅ File uploaded successfully.")
         log_event("dataset_loaded", "user_csv")
-
 # 🛑 Check Data
 if "main_df" not in st.session_state:
     st.warning("🚨 Please load or upload a dataset to proceed.")
@@ -96,7 +94,6 @@ c1, c2, c3 = st.columns(3)
 c1.metric("💰 Total Billing", f"${filtered_df['Billing Amount'].sum():,.2f}")
 c2.metric("🛏️ Avg Stay", f"{filtered_df['Length of Stay'].mean():.1f} days")
 c3.metric("👥 Total Patients", f"{filtered_df['Name'].nunique()}")
-
 # 📉 Trend Chart
 if "Date of Admission" in filtered_df.columns:
     try:
@@ -109,76 +106,82 @@ if "Date of Admission" in filtered_df.columns:
     except Exception as e:
         debug_log(f"Trend chart error: {e}")
 
-
-# 🔁 Suggested Chart Generator
-def generate_chart_for_suggestion(s):
-    if "billing trend" in s.lower():
+# 🧩 Helper: Chart Generator from Query Keywords
+def generate_chart_for_query(query):
+    q = query.lower()
+    if "billing" in q and "hospital" in q:
+        data = filtered_df.groupby("Hospital")["Billing Amount"].sum().reset_index()
+        chart = alt.Chart(data).mark_bar().encode(
+            x="Hospital:N", y="Billing Amount:Q", tooltip=["Hospital", "Billing Amount"]
+        ).properties(title="💰 Total Billing by Hospital")
+        st.altair_chart(chart, use_container_width=True)
+        export_csv(data, "billing_by_hospital")
+        return True
+    elif "average stay" in q or "length of stay" in q:
         if "Date of Admission" in filtered_df.columns:
-            data = filtered_df.groupby("Date of Admission")["Billing Amount"].sum().reset_index()
-            chart = alt.Chart(data).mark_line().encode(
-                x="Date of Admission:T", y="Billing Amount:Q"
-            ).properties(title="📉 Billing Trend by Admission Date")
+            data = filtered_df.groupby("Date of Admission")["Length of Stay"].mean().reset_index()
+            chart = alt.Chart(data).mark_line(point=True).encode(
+                x="Date of Admission:T", y="Length of Stay:Q"
+            ).properties(title="📈 Avg Length of Stay Over Time")
             st.altair_chart(chart, use_container_width=True)
-            export_csv(data, "billing_trend")
-    elif "gender" in s.lower():
+            export_csv(data, "avg_stay_trend")
+            return True
+    elif "gender" in q and "patients" in q:
         data = filtered_df["Gender"].value_counts().reset_index()
         data.columns = ["Gender", "Count"]
         chart = alt.Chart(data).mark_bar().encode(
             x="Gender:N", y="Count:Q", tooltip=["Gender", "Count"]
-        )
+        ).properties(title="👥 Patient Count by Gender")
         st.altair_chart(chart, use_container_width=True)
         export_csv(data, "gender_distribution")
-    elif "insurance" in s.lower():
-        data = filtered_df.groupby("Insurance Provider")["Billing Amount"].sum().reset_index()
-        chart = alt.Chart(data).mark_bar().encode(
-            x="Insurance Provider:N", y="Billing Amount:Q", tooltip=["Insurance Provider", "Billing Amount"]
-        )
-        st.altair_chart(chart, use_container_width=True)
-        export_csv(data, "billing_by_insurance")
+        return True
+    return False  # fallback to GPT
 
-# 🤖 Respond to Query
+# 🛑 Data Check
+if "main_df" not in st.session_state:
+    st.warning("🚨 Please load or upload a dataset to proceed.")
+    st.stop()
+
+df = st.session_state["main_df"]
+df["Billing Amount"] = pd.to_numeric(df["Billing Amount"].replace('[\$,]', '', regex=True), errors="coerce")
+df["Length of Stay"] = pd.to_numeric(df.get("Length of Stay", pd.Series(dtype=float)), errors="coerce")
+filtered_df = df.copy()
+
+# 💬 Chat Assistant Logic with Chart Fallback
+st.subheader("💬 Chat Assistant")
+if "chat_history" not in st.session_state:
+    st.session_state["chat_history"] = []
+
 def respond_to_query(query):
+    if generate_chart_for_query(query):
+        return "📊 Chart generated based on your question!"
     try:
         agent = create_pandas_dataframe_agent(ChatOpenAI(temperature=0), df=filtered_df, verbose=False)
         return agent.run(query)
-    except Exception:
+    except Exception as e:
+        st.session_state["fallback_log"] = st.session_state.get("fallback_log", [])
         st.session_state["fallback_log"].append(query)
-        return "🤖 I’m not able to understand that question.
+        return "🤖 I couldn’t understand that. Try a question like: 'Total billing by hospital' or 'Average stay over time'."
 
-Try:
-- *Total billing by hospital*
-- *Average stay per condition*
-- *Top conditions by test result*"
-
-# 💬 Chat Assistant
-st.subheader("💬 Chat Assistant")
-suggestions = [
-    "Show billing trend by hospital",
-    "Patient count by gender",
-    "Top conditions by test results",
-    "Total billing by insurance provider",
-    "Average age of patients by condition"
-]
-cols = st.columns(len(suggestions))
-for i, s in enumerate(suggestions):
-    if cols[i].button(s):
-        response = respond_to_query(s)
-        st.session_state["chat_history"].append((s, response))
-        st.session_state["query_log"][s] = st.session_state["query_log"].get(s, 0) + 1
-        generate_chart_for_suggestion(s)  # 🎯 Trigger corresponding chart
-
+# UI for chat history and input
 for i, (q, a) in enumerate(st.session_state["chat_history"]):
     message(q, is_user=True, key=f"user_{i}")
     message(a, key=f"bot_{i}")
 
 with st.form("chat_form", clear_on_submit=True):
-    user_input = st.text_input("Ask a question", placeholder="e.g. Average stay by condition")
+    user_input = st.text_input("Ask a question", placeholder="e.g. Total billing by hospital")
     submitted = st.form_submit_button("Send")
     if submitted and user_input:
         response = respond_to_query(user_input)
         st.session_state["chat_history"].append((user_input, response))
-        st.session_state["query_log"][user_input] = st.session_state["query_log"].get(user_input, 0) + 1
         st.expander("📋 Copy Response").code(response)
+
+# ✅ Debug Snapshot
+if DEBUG_MODE:
+    st.markdown("### 🧪 Debug Snapshot")
+    st.write("Chat History", st.session_state.get("chat_history"))
+    st.write("Usage Log", st.session_state.get("usage_log"))
+    st.write("Fallback Log", st.session_state.get("fallback_log"))
 
 
 # 📖 Narrative Insights

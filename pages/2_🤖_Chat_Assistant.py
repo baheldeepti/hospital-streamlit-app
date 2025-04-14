@@ -230,4 +230,4 @@ if st.session_state.chat_history:
     
 st.page_link("pages/1_📊_Dashboard.py", label="📊Dashboard", icon="📊")
 st.page_link("pages/4_Dashboard_Feature_Overview.py", label="📊Dashboard Feature Overview", icon="📊")
-st.page_link("pages/3__ChatAssistantFeature_Overview.py", label="📄Chat Assistant Feature Overview", icon="📄")
+st.page_link("pages/3__Chat_Assistant_Feature_Overview.py", label="📄Chat Assistant Feature Overview", icon="📄")

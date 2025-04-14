@@ -22,12 +22,44 @@ openai.api_key = st.secrets.get("OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY")
 st.set_page_config(page_title="🤖 Chat Assistant", layout="wide")
 st.title("🤖 Hospital Chat Assistant")
 
-# 🆕 Sample Dataset Download Prompt
-st.markdown("""
-If you don't have your own data yet, you can use our sample hospital dataset to try out the dashboard.
+# ℹ️ About the App – Restored Block
+with st.sidebar.expander("ℹ️ About This App", expanded=False):
+    st.markdown("""
+    **🧠 Hospital Chat Assistant** is a smart dashboard and AI assistant built to help hospitals explore their data effortlessly.
 
-🔗 [**Download Sample CSV**](https://github.com/baheldeepti/hospital-streamlit-app/raw/main/modified_healthcare_dataset.csv)
-""")
+    #### 🛠️ Powered By:
+    - **Streamlit** for UI
+    - **LangChain + OpenAI** for conversational logic
+    - **Altair & Matplotlib** for visualizations
+    - **Statsmodels** for trend analysis
+
+    👩‍⚕️ Created for healthcare analysts, data teams, and curious users to make insights more accessible.
+    """)
+
+# 📁 Sidebar: Dataset Loader + Sample Link
+with st.sidebar.expander("📁 Load or Upload Dataset", expanded=True):
+    st.markdown("""
+    If you don't have your own data yet, you can use our sample hospital dataset to try out the dashboard.  
+    🔗 [**Download Sample CSV**](https://github.com/baheldeepti/hospital-streamlit-app/raw/main/modified_healthcare_dataset.csv)
+    """)
+
+    if st.button("Load Sample Hospital Data"):
+        try:
+            sample_url = "https://raw.githubusercontent.com/baheldeepti/hospital-streamlit-app/main/modified_healthcare_dataset.csv"
+            df = pd.read_csv(sample_url)
+            st.session_state["main_df"] = df
+            st.success("✅ Sample dataset loaded.")
+        except Exception as e:
+            st.error(f"❌ Could not load sample dataset: {e}")
+
+    uploaded_file = st.file_uploader("Upload your CSV", type="csv")
+    if uploaded_file:
+        try:
+            df = pd.read_csv(uploaded_file)
+            st.session_state["main_df"] = df
+            st.success("✅ File uploaded successfully.")
+        except Exception as e:
+            st.error(f"❌ Error reading file: {e}")
 
 # 🧾 Dataset Required
 if "main_df" not in st.session_state:
@@ -81,8 +113,10 @@ for i, s in enumerate(suggestions):
         st.session_state["chat_input"] = s
         st.session_state["query_log"][s] = st.session_state["query_log"].get(s, 0) + 1
 
-# 🧠 User Input
-user_input = st.text_input("Ask a question", key="chat_input", placeholder="E.g. Average stay by condition")
+# ✅ Chat Input Form (Fixes typing issue)
+with st.form("chat_form", clear_on_submit=True):
+    user_input = st.text_input("Ask a question", key="chat_input", placeholder="E.g. Average stay by condition")
+    submitted = st.form_submit_button("Send")
 
 # 🛡️ Safe Agent Execution
 def respond_to_query(query):
@@ -114,8 +148,8 @@ def add_tooltip(response, terms):
             response += f"\n\n🛈 *{word.capitalize()}* refers to: {tip}"
     return response
 
-# 🧠 Handle Chat
-if user_input:
+# 🧠 Run Query on Submit
+if submitted and user_input:
     with st.spinner("🤖 Assistant is thinking..."):
         response = respond_to_query(user_input)
         response = add_tooltip(response, tooltips)

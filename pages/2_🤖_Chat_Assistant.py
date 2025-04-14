@@ -8,6 +8,7 @@ from io import BytesIO
 import matplotlib.pyplot as plt
 import altair as alt
 from fpdf import FPDF
+from statsmodels.tsa.seasonal import seasonal_decompose
 from streamlit_chat import message
 
 from langchain.chat_models import ChatOpenAI
@@ -21,41 +22,9 @@ openai.api_key = st.secrets.get("OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY")
 st.set_page_config(page_title="🤖 Chat Assistant", layout="wide")
 st.title("🤖 Hospital Chat Assistant")
 
-# ℹ️ Sidebar Info
-with st.sidebar.expander("ℹ️ About This App", expanded=False):
-    st.markdown("""
-    This app helps you explore hospital datasets through a conversational AI assistant.
-    Ask about billing, conditions, patient trends, and more!
-    """)
-
-# 📁 Sidebar: Dataset Loader
-with st.sidebar.expander("📥 Load or Upload Dataset", expanded=True):
-    if st.button("Load Sample Hospital Data"):
-        try:
-            sample_url = "https://raw.githubusercontent.com/baheldeepti/hospital-streamlit-app/main/modified_healthcare_dataset.csv"
-            df = pd.read_csv(sample_url)
-            st.session_state["main_df"] = df
-            st.success("✅ Sample dataset loaded.")
-        except Exception as e:
-            st.error(f"❌ Failed to load sample dataset: {e}")
-
-    uploaded_file = st.file_uploader("Upload your CSV", type="csv")
-    if uploaded_file:
-        try:
-            df = pd.read_csv(uploaded_file)
-            st.session_state["main_df"] = df
-            st.success("✅ File uploaded successfully.")
-        except Exception as e:
-            st.error(f"❌ Error reading file: {e}")
-
-# 🧠 Session State Initialization
-for key in ["chat_history", "query_log", "fallback_log"]:
-    if key not in st.session_state:
-        st.session_state[key] = [] if key != "query_log" else {}
-
-# 🧾 Dataset Validation
+# 🧾 Dataset Required
 if "main_df" not in st.session_state:
-    st.warning("⚠️ Please load or upload a dataset to begin.")
+    st.warning("⚠️ Please upload or load a dataset from the sidebar before using the chat assistant.")
     st.stop()
 
 df = st.session_state["main_df"]
@@ -79,13 +48,18 @@ with st.sidebar.expander("📚 Data Glossary", expanded=False):
     - **Length of Stay**: Days admitted
     """)
 
+# 💾 Session Initialization
+for key in ["chat_history", "query_log", "fallback_log"]:
+    if key not in st.session_state:
+        st.session_state[key] = [] if key != "query_log" else {}
+
 # 💬 Chat Section
 st.markdown("### 💬 Chat with Assistant")
 for i, (q, a) in enumerate(st.session_state.chat_history):
     message(q, is_user=True, key=f"user_{i}")
     message(a, key=f"bot_{i}")
 
-# 💡 Suggested Questions
+# 💡 Suggested Prompts
 suggestions = [
     "Show billing trend by hospital",
     "Patient count by gender",
@@ -100,51 +74,27 @@ for i, s in enumerate(suggestions):
         st.session_state["chat_input"] = s
         st.session_state["query_log"][s] = st.session_state["query_log"].get(s, 0) + 1
 
+# 🧠 User Input
 user_input = st.text_input("Ask a question", key="chat_input", placeholder="E.g. Average stay by condition")
 
-# 🤖 Query Processor
+# 🛡️ Safe Agent Execution
 def respond_to_query(query):
     try:
         agent = create_pandas_dataframe_agent(
             llm=ChatOpenAI(temperature=0),
             df=df,
             verbose=False
-            # Not passing allow_dangerous_code=True ensures safety
         )
         return agent.run(query)
     except Exception as e:
-        return f"⚠️ Error: {str(e)}\n\nThis platform doesn't support unsafe code execution."
+        st.session_state["fallback_log"].append(query)
+        return (
+            "⚠️ This query relies on code execution tools that are not supported on this platform.\n\n"
+            "Please explore the dashboard or try uploading different data."
+        )
 
-if user_input:
-    with st.spinner("🤖 Thinking..."):
-        response = respond_to_query(user_input)
-        st.session_state.chat_history.append((user_input, response))
-
-# 📊 Auto Chart Preview
-st.markdown("### 📊 Auto Chart Preview")
-if "chat_input" in st.session_state:
-    query = st.session_state.chat_input.lower()
-
-    if "billing" in query and "hospital" in query:
-        chart_data = df.groupby("Hospital")["Billing Amount"].sum().reset_index()
-        chart = alt.Chart(chart_data).mark_bar().encode(
-            x=alt.X("Hospital:N", sort="-y"),
-            y="Billing Amount:Q"
-        ).properties(title="Billing by Hospital")
-        st.altair_chart(chart, use_container_width=True)
-
-# 🏆 Leaderboard
-if st.session_state.query_log:
-    leaderboard = pd.DataFrame(st.session_state.query_log.items(), columns=["Query", "Clicks"])
-    st.markdown("### 🏆 Most Popular Queries")
-    st.dataframe(leaderboard)
-
-# ⬇️ Chat History Download
-if st.session_state.chat_history:
-    chat_df = pd.DataFrame(st.session_state.chat_history, columns=["User", "Assistant"])
-    st.download_button("📥 Download Chat Log", data=chat_df.to_csv(index=False), file_name="chat_history.csv")
-
-# 🔗 Page Navigation
-st.page_link("pages/1_📊_Dashboard.py", label="📊 Dashboard")
-st.page_link("pages/4_Dashboard_Feature_Overview.py", label="📘 Dashboard Feature Overview")
-st.page_link("pages/3__Chat_Assistant_Feature_Overview.py", label="📄 Chat Assistant Feature Overview")
+# 📘 Keyword Tooltips
+tooltips = {
+    "billing": "Total amount charged to the patient",
+    "stay": "Length of stay in days",
+    "gender":

@@ -7,12 +7,10 @@ import altair as alt
 import os
 from datetime import datetime
 from streamlit_chat import message
-import openai  
 from langchain.chat_models import ChatOpenAI
 from langchain_experimental.agents import create_pandas_dataframe_agent
 from langchain.prompts import PromptTemplate
 from langchain.llms import OpenAI
-
 
 # 🌐 ENV + CONFIG
 openai_api_key = st.secrets.get("OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY")
@@ -254,26 +252,6 @@ def main():
     render_advanced_insights(df)
     render_logs()
     render_glossary()
-   
-
-
-# 👣 Footer
-st.markdown("---")
-st.markdown("### 🧭 Navigate to Other Pages")
-st.page_link("pages/1_📊_Dashboard.py", label="📊 Dashboard", icon="📊")
-st.page_link("pages/3__Chat_Assistant_Feature_Overview.py", label="📄 Chat Assistant Feature Overview", icon="📄")
-st.page_link("pages/4_Dashboard_Feature_Overview.py", label="📘 Dashboard Feature Overview", icon="📘")
-st.markdown("---")
-st.markdown(
-    """
-    <div style='text-align:center; font-size: 14px; color: gray;'>
-        Made with ❤️ by Deepti Bahel <br>
-        Powered by <b>Streamlit</b> · <b>LangChain</b> · <b>Altair</b>
-    </div>
-    """,
-    unsafe_allow_html=True
-)
-
     st.markdown("---\nMade with ❤️ by Deepti Bahel | Powered by Streamlit + LangChain + Altair")
 
 if __name__ == "__main__":

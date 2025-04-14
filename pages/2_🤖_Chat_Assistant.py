@@ -22,6 +22,13 @@ openai.api_key = st.secrets.get("OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY")
 st.set_page_config(page_title="🤖 Chat Assistant", layout="wide")
 st.title("🤖 Hospital Chat Assistant")
 
+# 🆕 Sample Dataset Download Prompt
+st.markdown("""
+If you don't have your own data yet, you can use our sample hospital dataset to try out the dashboard.
+
+🔗 [**Download Sample CSV**](https://github.com/baheldeepti/hospital-streamlit-app/raw/main/modified_healthcare_dataset.csv)
+""")
+
 # 🧾 Dataset Required
 if "main_df" not in st.session_state:
     st.warning("⚠️ Please upload or load a dataset from the sidebar before using the chat assistant.")
@@ -97,4 +104,90 @@ def respond_to_query(query):
 tooltips = {
     "billing": "Total amount charged to the patient",
     "stay": "Length of stay in days",
-    "gender":
+    "gender": "Gender breakdown of patients",
+    "condition": "Primary medical condition during admission"
+}
+
+def add_tooltip(response, terms):
+    for word, tip in terms.items():
+        if word in response.lower():
+            response += f"\n\n🛈 *{word.capitalize()}* refers to: {tip}"
+    return response
+
+# 🧠 Handle Chat
+if user_input:
+    with st.spinner("🤖 Assistant is thinking..."):
+        response = respond_to_query(user_input)
+        response = add_tooltip(response, tooltips)
+        st.session_state.chat_history.append((user_input, response))
+
+# 📊 Auto Chart Preview
+st.markdown("### 📊 Auto Chart Preview")
+if "chat_input" in st.session_state:
+    query = st.session_state.chat_input.lower()
+
+    def export_chart(chart, filename):
+        buf = BytesIO()
+        chart.save(buf, format="png")
+        b64 = base64.b64encode(buf.getvalue()).decode()
+        href = f'<a href="data:image/png;base64,{b64}" download="{filename}.png">📩 Download PNG</a>'
+        st.markdown(href, unsafe_allow_html=True)
+
+    def export_chart_pdf(dataframe, filename):
+        buffer = BytesIO()
+        fig, ax = plt.subplots()
+        dataframe.plot(kind='barh', x=dataframe.columns[0], y=dataframe.columns[1], ax=ax)
+        fig.tight_layout()
+        plt.savefig(buffer, format="pdf")
+        buffer.seek(0)
+        b64_pdf = base64.b64encode(buffer.read()).decode()
+        href = f'<a href="data:application/pdf;base64,{b64_pdf}" download="{filename}.pdf">📄 Download PDF</a>'
+        st.markdown(href, unsafe_allow_html=True)
+
+    if "billing" in query and "hospital" in query:
+        chart_data = df.groupby("Hospital")["Billing Amount"].sum().reset_index()
+        chart = alt.Chart(chart_data).mark_bar().encode(
+            x=alt.X("Hospital:N", sort="-y"),
+            y="Billing Amount:Q"
+        ).properties(title="Billing by Hospital")
+        st.altair_chart(chart, use_container_width=True)
+        export_chart(chart, "billing_by_hospital")
+        export_chart_pdf(chart_data, "billing_by_hospital")
+
+    elif "gender" in query:
+        chart_data = df["Gender"].value_counts().reset_index()
+        chart_data.columns = ["Gender", "Count"]
+        chart = alt.Chart(chart_data).mark_bar().encode(
+            x="Gender:N",
+            y="Count:Q"
+        ).properties(title="Patient Count by Gender")
+        st.altair_chart(chart, use_container_width=True)
+        export_chart(chart, "patient_count_by_gender")
+        export_chart_pdf(chart_data, "patient_count_by_gender")
+
+# 🏆 Leaderboard
+if st.session_state.query_log:
+    leaderboard_df = pd.DataFrame(
+        sorted(st.session_state.query_log.items(), key=lambda x: x[1], reverse=True),
+        columns=["Query", "Clicks"]
+    )
+    st.markdown("### 🏆 Most Clicked Suggestions")
+    st.dataframe(leaderboard_df, use_container_width=True)
+    st.download_button("⬇️ Download Query Log (CSV)", data=leaderboard_df.to_csv(index=False), file_name="query_log.csv")
+
+# 🧾 Fallback Queries
+if st.session_state.fallback_log:
+    fallback_df = pd.DataFrame(st.session_state.fallback_log, columns=["Query"])
+    st.markdown("### 🧾 Fallback Queries")
+    st.dataframe(fallback_df, use_container_width=True)
+    st.download_button("⬇️ Download Fallback Queries", data=fallback_df.to_csv(index=False), file_name="fallback_queries.csv")
+
+# 💬 Chat Download
+if st.session_state.chat_history:
+    chat_df = pd.DataFrame(st.session_state.chat_history, columns=["User", "Assistant"])
+    st.download_button("🗎 Download Chat History (CSV)", data=chat_df.to_csv(index=False), file_name="chat_history.csv")
+
+# 🔗 Page Navigation
+st.page_link("pages/1_📊_Dashboard.py", label="📊 Dashboard", icon="📊")
+st.page_link("pages/4_Dashboard_Feature_Overview.py", label="📘 Dashboard Feature Overview", icon="📘")
+st.page_link("pages/3__Chat_Assistant_Feature_Overview.py", label="📄 Chat Assistant Feature Overview", icon="📄")

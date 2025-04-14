@@ -284,7 +284,7 @@ def render_glossary():
 
 # 🏁 MAIN RUN LOGIC
 def main():
-    #load_data()
+    load_data()
     if "main_df" not in st.session_state:
         st.warning("🚨 Please load or upload a dataset to proceed.")
         return

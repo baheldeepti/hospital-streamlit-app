@@ -1,5 +1,4 @@
-
-# 📘 Hospital Chat Assistant - v1.3.6 FINAL
+# 📘 Hospital Chat Assistant - v1.3.7 FINAL (Cleaned & Debugged)
 
 import streamlit as st
 import pandas as pd
@@ -13,25 +12,24 @@ import openai
 from datetime import datetime
 import time
 
-# 🔐 OpenAI Key Setup
 openai.api_key = st.secrets.get("OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY")
 
-# 📊 Page Config
+# Page Configuration
 st.set_page_config(page_title="🤖 Chat Assistant", layout="wide")
 st.title("🤖 Hospital Chat Assistant")
 
-# 🐞 Debug Mode
+# Debug Mode
 DEBUG_MODE = st.sidebar.checkbox("🐞 Enable Debug Mode")
 def debug_log(msg):
     if DEBUG_MODE:
         st.sidebar.markdown(f"🔍 **Debug**: {msg}")
 
-# 📦 Export CSV Helper
+# CSV Export Helper
 def export_csv(dataframe, filename):
     csv = dataframe.to_csv(index=False).encode()
     st.download_button("📩 Download CSV", csv, file_name=f"{filename}.csv", mime="text/csv")
 
-# 📋 Usage Logging
+# Usage Logging
 if "usage_log" not in st.session_state:
     st.session_state["usage_log"] = []
 def log_event(event_type, detail):
@@ -41,23 +39,23 @@ def log_event(event_type, detail):
         "detail": detail
     })
 
-# ℹ️ About
+# About
 with st.sidebar.expander("ℹ️ About This App", expanded=False):
     st.markdown("""
     **🧠 Hospital Chat Assistant** helps hospitals explore data interactively.
-
     - 🤖 Chat with an AI agent
     - 📊 Create charts from prompts or dropdowns
     - 📋 View KPIs and session summary
     - 🔍 Search glossary for help
-
     Created by Deepti Bahel
     """)
 
-# 📁 Load Data
+# Load Data
 with st.sidebar.expander("📁 Load or Upload Dataset", expanded=True):
-    st.markdown("""Try with your own CSV or use a sample dataset:  
-    🔗 [**Download Sample CSV**](https://github.com/baheldeepti/hospital-streamlit-app/raw/main/modified_healthcare_dataset.csv)""")
+    st.markdown("""
+    Try with your own CSV or use a sample dataset:  
+    🔗 [**Download Sample CSV**](https://github.com/baheldeepti/hospital-streamlit-app/raw/main/modified_healthcare_dataset.csv)
+    """)
     if st.button("Load Sample Hospital Data"):
         df = pd.read_csv("https://raw.githubusercontent.com/baheldeepti/hospital-streamlit-app/main/modified_healthcare_dataset.csv")
         st.session_state["main_df"] = df
@@ -79,7 +77,7 @@ df["Billing Amount"] = pd.to_numeric(df["Billing Amount"].replace('[\$,]', '', r
 df["Length of Stay"] = pd.to_numeric(df.get("Length of Stay", pd.Series(dtype=float)), errors="coerce")
 df["Billing Formatted"] = df["Billing Amount"].apply(lambda x: f"${x/1000:.1f}K" if pd.notnull(x) else "N/A")
 
-# 🔍 Glossary (Updated Based on Kaggle Dataset)
+# Glossary
 with st.sidebar.expander("🔍 Data Glossary", expanded=False):
     st.text_input("Search term", key="glossary_search")
     glossary = {
@@ -103,12 +101,12 @@ with st.sidebar.expander("🔍 Data Glossary", expanded=False):
         if st.session_state.glossary_search.lower() in term.lower():
             st.markdown(f"- **{term}**: {desc}")
 
-# 💾 Init State
+# Init Session State
 for key in ["chat_history", "query_log", "fallback_log"]:
     if key not in st.session_state:
         st.session_state[key] = [] if key != "query_log" else {}
 
-# 🧩 Filters
+# Filters
 st.sidebar.markdown("### 🔎 Apply Filters")
 hospitals = st.sidebar.multiselect("Filter by Hospital", df["Hospital"].dropna().unique())
 conditions = st.sidebar.multiselect("Filter by Condition", df["Medical Condition"].dropna().unique())
@@ -118,24 +116,23 @@ if hospitals:
 if conditions:
     filtered_df = filtered_df[filtered_df["Medical Condition"].isin(conditions)]
 
-# 📈 KPIs
+# KPIs
 st.markdown("## 📈 Summary KPIs")
 col1, col2, col3 = st.columns(3)
 col1.metric("💰 Total Billing", f"${filtered_df['Billing Amount'].sum():,.2f}")
 col2.metric("🛏️ Avg Stay", f"{filtered_df['Length of Stay'].mean():.1f} days")
 col3.metric("👥 Total Patients", f"{filtered_df['Name'].nunique()}")
 
-# 📈 Trend Chart
+# Trends
 if "Date of Admission" in filtered_df.columns:
     filtered_df["Date of Admission"] = pd.to_datetime(filtered_df["Date of Admission"])
     trend_data = filtered_df.groupby("Date of Admission")["Billing Amount"].sum().reset_index()
     trend_chart = alt.Chart(trend_data).mark_line(point=True).encode(
-        x="Date of Admission:T",
-        y="Billing Amount:Q"
+        x="Date of Admission:T", y="Billing Amount:Q"
     ).properties(title="📉 Billing Trend Over Time")
     st.altair_chart(trend_chart, use_container_width=True)
 
-# 🤖 Respond Function
+# Respond
 def respond_to_query(query):
     try:
         agent = create_pandas_dataframe_agent(ChatOpenAI(temperature=0), df=filtered_df, verbose=False)
@@ -143,7 +140,7 @@ def respond_to_query(query):
     except Exception:
         return "🤖 I’m currently unable to answer that question. Try rephrasing or ask about another metric!"
 
-# 💬 Chat Section
+# Chat Assistant
 st.markdown("### 💬 Chat with Assistant")
 for i, (q, a) in enumerate(st.session_state["chat_history"]):
     message(q, is_user=True, key=f"user_{i}")
@@ -174,51 +171,7 @@ with st.form("chat_form", clear_on_submit=True):
         with st.expander("📋 Copy Response"):
             st.code(response, language="markdown")
 
-# 📊 Advanced Insights (Added)
-st.markdown("### 📊 Advanced Insights")
-chart_type = st.selectbox("Chart type", ["Bar Chart", "Line Chart", "Pie Chart"])
-dimension = st.selectbox("Dimension", ["Gender", "Insurance Provider", "Hospital", "Medical Condition", "Date of Admission"])
-
-if chart_type == "Bar Chart":
-    data = filtered_df[dimension].dropna().value_counts().reset_index()
-    data.columns = [dimension, "Count"]
-    chart = alt.Chart(data).mark_bar().encode(
-        x=alt.X(f"{dimension}:N", sort="-y"),
-        y="Count:Q",
-        tooltip=[dimension, "Count"]
-    )
-    labels = alt.Chart(data).mark_text(
-        align="center", baseline="bottom", dy=-5, fontSize=12
-    ).encode(
-        x=f"{dimension}:N",
-        y="Count:Q",
-        text="Count:Q"
-    )
-    st.altair_chart(chart + labels, use_container_width=True)
-    export_csv(data, f"bar_chart_{dimension.lower().replace(' ', '_')}")
-
-elif chart_type == "Line Chart" and dimension == "Date of Admission":
-    filtered_df["Date of Admission"] = pd.to_datetime(filtered_df["Date of Admission"])
-    data = filtered_df.groupby("Date of Admission")["Billing Amount"].mean().reset_index()
-    chart = alt.Chart(data).mark_line(point=True).encode(
-        x="Date of Admission:T",
-        y="Billing Amount:Q"
-    ).properties(title="Average Billing Over Time")
-    st.altair_chart(chart, use_container_width=True)
-    export_csv(data, "line_chart_billing_trend")
-
-elif chart_type == "Pie Chart":
-    data = filtered_df[dimension].dropna().value_counts().reset_index()
-    data.columns = [dimension, "Count"]
-    chart = alt.Chart(data).mark_arc(innerRadius=50).encode(
-        theta="Count:Q",
-        color=alt.Color(f"{dimension}:N"),
-        tooltip=[dimension, "Count"]
-    ).properties(title=f"{dimension} Distribution")
-    st.altair_chart(chart, use_container_width=True)
-    export_csv(data, f"pie_chart_{dimension.lower().replace(' ', '_')}")
-
-# 📖 Narrative Insights
+# Narrative Insights
 st.markdown("### 📖 Narrative Insights")
 if st.button("Generate Narrative Summary"):
     with st.spinner("Generating insights..."):
@@ -227,9 +180,7 @@ if st.button("Generate Narrative Summary"):
             from langchain.llms import OpenAI
             summary_text = filtered_df.describe(include='all').to_string()
             prompt = PromptTemplate.from_template(
-                "You are a healthcare analyst. Summarize the following dataset insightfully:
-
-{summary}"
+                "You are a healthcare analyst. Summarize the following dataset insightfully:\n\n{summary}"
             )
             llm = OpenAI(temperature=0)
             summary = llm(prompt.format(summary=summary_text))
@@ -238,7 +189,7 @@ if st.button("Generate Narrative Summary"):
         except Exception as e:
             st.warning(f"GPT Summary unavailable: {e}")
 
-# 🏆 Leaderboard
+# Leaderboard
 if st.session_state["query_log"]:
     leaderboard_df = pd.DataFrame(
         sorted(st.session_state["query_log"].items(), key=lambda x: x[1], reverse=True),
@@ -248,12 +199,12 @@ if st.session_state["query_log"]:
     st.dataframe(leaderboard_df, use_container_width=True)
     st.download_button("⬇️ Download Query Log (CSV)", data=leaderboard_df.to_csv(index=False), file_name="query_log.csv")
 
-# 📥 Usage Log
+# Usage Log
 if st.session_state["usage_log"]:
     log_df = pd.DataFrame(st.session_state["usage_log"])
     st.download_button("📥 Download Usage Log", log_df.to_csv(index=False), file_name="usage_log.csv")
 
-# 🔗 Navigation + Footer
+# Footer
 st.page_link("pages/1_📊_Dashboard.py", label="📊 Dashboard", icon="📊")
 st.page_link("pages/4_Dashboard_Feature_Overview.py", label="📘 Dashboard Feature Overview", icon="📘")
 st.page_link("pages/3__Chat_Assistant_Feature_Overview.py", label="📄 Chat Assistant Feature Overview", icon="📄")

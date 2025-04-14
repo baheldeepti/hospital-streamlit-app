@@ -11,3 +11,4 @@ openai
 tiktoken
 streamlit-chat
 faiss-cpu
+fpdf

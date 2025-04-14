@@ -14,4 +14,4 @@ statsmodels>=0.13.0
 streamlit-chat>=0.0.2
 streamlit-lottie
 streamlit>=1.25.0
-tiktoken
+streamlit_chat

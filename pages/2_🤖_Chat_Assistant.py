@@ -116,18 +116,14 @@ def respond_to_query(query):
         return agent.run(query)
     except Exception:
         st.session_state["fallback_log"].append(query)
-        return (
-            "🤖 I’m not able to understand that question right now.
+        return """🤖 I’m not able to understand that question right now.
 
-"
-            "**Try asking something like:**
-"
-            "- *Total billing by hospital*
-"
-            "- *Average stay per condition*
-"
-            "- *Top conditions by test result*"
-        )
+**Try asking something like:**
+- *Total billing by hospital*
+- *Average stay per condition*
+- *Top conditions by test result*
+"""
+
 
 # 💬 Chat Assistant
 st.subheader("💬 Chat Assistant")

@@ -39,7 +39,7 @@ def log_event(event_type, detail):
         "type": event_type,
         "detail": detail
     })
-    FALLBACK_RESPONSE = """🤖 I’m not able to understand that question right now."""
+    FALLBACK_RESPONSE = """I’m not able to understand that question right now."""
 
 # -------------------------------------
 # 📁 Data Load

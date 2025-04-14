@@ -14,17 +14,9 @@ from langchain_experimental.agents import create_pandas_dataframe_agent
 import openai
 from datetime import datetime
 import logging
-import time
 
 # 🔐 OpenAI Key Setup
 openai.api_key = st.secrets.get("OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY")
-
-
-# 📦 Utility: Export CSV Download Button
-def export_csv(dataframe, filename):
-    csv = dataframe.to_csv(index=False).encode()
-    st.download_button("📩 Download CSV", csv, file_name=f"{filename}.csv", mime="text/csv")
-
 
 # 📊 Page Config
 st.set_page_config(page_title="🤖 Chat Assistant", layout="wide")
@@ -46,7 +38,7 @@ def log_event(event_type, detail):
 
 # ℹ️ About the App – Sidebar
 with st.sidebar.expander("ℹ️ About This App", expanded=False):
-    st.marst.markdown("""
+    st.markdown("""
     **🧠 Hospital Chat Assistant** helps hospitals explore data interactively.
 
     - 🤖 Chat with an AI agent
@@ -59,7 +51,7 @@ with st.sidebar.expander("ℹ️ About This App", expanded=False):
 
 # 📁 Dataset Upload Section
 with st.sidebar.expander("📁 Load or Upload Dataset", expanded=True):
-    st.marst.markdown("""
+    st.markdown("""
     Try with your own CSV or use a sample dataset:
     🔗 [**Download Sample CSV**](https://github.com/baheldeepti/hospital-streamlit-app/raw/main/modified_healthcare_dataset.csv)
     """)
@@ -107,7 +99,7 @@ with st.sidebar.expander("🔍 Data Glossary"):
     }
     for term, desc in glossary.items():
         if st.session_state.glossary_search.lower() in term.lower():
-            st.marst.markdown(f"- **{term}**: {desc}")
+            st.markdown(f"- **{term}**: {desc}")
 
 
 # 💾 Ensure session keys are initialized
@@ -117,7 +109,7 @@ for key in ["chat_history", "query_log", "fallback_log"]:
 
 
 # 🧩 Multi-Selection Filters
-st.sidebar.marst.markdown("### 🔎 Apply Filters")
+st.sidebar.markdown("### 🔎 Apply Filters")
 hospitals = st.sidebar.multiselect("Filter by Hospital", df["Hospital"].dropna().unique())
 conditions = st.sidebar.multiselect("Filter by Condition", df["Medical Condition"].dropna().unique())
 
@@ -130,7 +122,7 @@ if conditions:
 log_event("filters_applied", f"Hospitals: {len(hospitals)}, Conditions: {len(conditions)}")
 
 # 📊 KPI Summary Section
-st.marst.markdown("## 📈 Summary KPIs")
+st.markdown("## 📈 Summary KPIs")
 
 col1, col2, col3 = st.columns(3)
 col1.metric("💰 Total Billing", f"${filtered_df['Billing Amount'].sum():,.2f}")
@@ -150,7 +142,7 @@ if "Date of Admission" in filtered_df.columns:
 
 
 # 💬 Chat Assistant Section
-st.marst.markdown("### 💬 Chat with Assistant")
+st.markdown("### 💬 Chat with Assistant")
 for i, (q, a) in enumerate(st.session_state.get("chat_history", [])):
     message(q, is_user=True, key=f"user_{i}")
     message(a, key=f"bot_{i}")
@@ -163,6 +155,15 @@ suggestions = [
     "Average age of patients by condition"
 ]
 cols = st.columns(len(suggestions))
+for i, s in enumerate(suggestions):
+    if cols[i].button(s):
+        st.session_state["chat_input"] = s
+        st.session_state["query_log"][s] = st.session_state["query_log"].get(s, 0) + 1
+        st.session_state["last_chat_query"] = s
+        response = respond_to_query(s)
+        st.session_state.chat_history.append((s, response))
+        log_event("chat_query", s)
+
 def respond_to_query(query):
     try:
         agent = create_pandas_dataframe_agent(
@@ -173,44 +174,22 @@ def respond_to_query(query):
         return agent.run(query)
     except Exception as e:
         st.session_state["fallback_log"].append(query)
-        return "🤖 I’m currently unable to answer that question. Try rephrasing or ask about another metric!"
-
-
-
-for i, s in enumerate(suggestions):
-    if cols[i].button(s):
-        st.session_state["chat_input"] = s
-        st.session_state["query_log"][s] = st.session_state["query_log"].get(s, 0) + 1
-        
-
-st.session_state["last_chat_query"] = s
-        response = respond_to_query(s)
-        st.session_state.chat_history.append((s, response))
-        log_event("chat_query", s)
+        return "⚠️ Code execution not supported in this environment."
 
 
 # 📊 Advanced Insights Section
-st.marst.markdown("### 📊 Advanced Insights")
+st.mar
+
 with st.form("chat_form", clear_on_submit=True):
     user_input = st.text_input("Ask a question", placeholder="E.g. Average stay by condition")
     submitted = st.form_submit_button("Send")
-    
     if submitted and user_input:
         st.session_state.last_chat_query = user_input
-        typing_box = st.empty()
-        typing_box.markdown("🤖 Assistant is typing...")
-        time.sleep(1.2)
         response = respond_to_query(user_input)
-        typing_box.empty()
         st.session_state.chat_history.append((user_input, response))
         log_event("chat_query", user_input)
 
-        # 📋 Copy to clipboard
-        with st.expander("📋 Copy Response"):
-            st.code(response, language="markdown")
-log_event("chat_query", user_input)
-
-st.markdown("### 📊 Advanced Insights")
+kdown("### 📊 Advanced Insights")
 
 chart_type = st.selectbox("Choose chart type", ["Bar Chart", "Line Chart", "Pie Chart"])
 dimension = st.selectbox("Choose dimension", sorted(["Gender", "Insurance Provider", "Hospital", "Medical Condition", "Date of Admission"]))
@@ -225,70 +204,6 @@ if chart_type == "Line Chart" and dimension == "Date of Admission":
         y="Billing Amount:Q"
     ).properties(title="Average Billing Over Time")
     st.info("💡 Tip: You can download the data for this chart as CSV below.")
-
-    # 📥 Export chart data as CSV
-    export_csv(data, f"{dimension.lower().replace(' ', '_')}_data")
-
-    
-    # 🧠 Optional Chart Summary
-    if st.checkbox("🧠 Summarize this chart using GPT", key=f"summary_{chart_type}_{dimension}"):
-        try:
-            from langchain.prompts import PromptTemplate
-            from langchain.llms import OpenAI
-
-            summary_text = data.describe(include='all').to_string()
-            prompt = PromptTemplate.from_template(
-                "You are a healthcare analyst. Summarize this chart and dataset insightfully:
-
-{summary}"
-            )
-            llm = OpenAI(temperature=0)
-            summary = llm(prompt.format(summary=summary_text))
-            st.success("🔍 GPT Insight:")
-            st.markdown(summary)
-        except Exception as e:
-            st.warning(f"GPT Summary unavailable: {e}")
-
-
-    # 🧠 Optional Chart Summary
-    if st.checkbox("🧠 Summarize this chart using GPT", key=f"summary_{chart_type}_{dimension}"):
-        try:
-            from langchain.prompts import PromptTemplate
-            from langchain.llms import OpenAI
-
-            summary_text = data.describe(include='all').to_string()
-            prompt = PromptTemplate.from_template(
-                "You are a healthcare analyst. Summarize this chart and dataset insightfully:
-
-{summary}"
-            )
-            llm = OpenAI(temperature=0)
-            summary = llm(prompt.format(summary=summary_text))
-            st.success("🔍 GPT Insight:")
-            st.markdown(summary)
-        except Exception as e:
-            st.warning(f"GPT Summary unavailable: {e}")
-
-
-    # 🧠 Optional Chart Summary
-    if st.checkbox("🧠 Summarize this chart using GPT", key=f"summary_{chart_type}_{dimension}"):
-        try:
-            from langchain.prompts import PromptTemplate
-            from langchain.llms import OpenAI
-
-            summary_text = data.describe(include='all').to_string()
-            prompt = PromptTemplate.from_template(
-                "You are a healthcare analyst. Summarize this chart and dataset insightfully:
-
-{summary}"
-            )
-            llm = OpenAI(temperature=0)
-            summary = llm(prompt.format(summary=summary_text))
-            st.success("🔍 GPT Insight:")
-            st.markdown(summary)
-        except Exception as e:
-            st.warning(f"GPT Summary unavailable: {e}")
-
 st.altair_chart(chart, use_container_width=True)
 
 elif chart_type == "Bar Chart":
@@ -307,11 +222,7 @@ elif chart_type == "Bar Chart":
         text="Count:Q"
     )
     st.info("💡 Tip: You can download the data for this chart as CSV below.")
-
-    # 📥 Export chart data as CSV
-    export_csv(data, f"{dimension.lower().replace(' ', '_')}_data")
-
-    st.altair_chart(chart + labels, use_container_width=True)
+st.altair_chart(chart + labels, use_container_width=True)
 
 elif chart_type == "Pie Chart":
     data = filtered_df[dimension].dropna().value_counts().reset_index()
@@ -322,14 +233,10 @@ elif chart_type == "Pie Chart":
         tooltip=[dimension, "Count"]
     ).properties(title=f"{dimension} Distribution")
     st.info("💡 Tip: You can download the data for this chart as CSV below.")
-
-    # 📥 Export chart data as CSV
-    export_csv(data, f"{dimension.lower().replace(' ', '_')}_data")
-
-    st.altair_chart(chart, use_container_width=True)
+st.altair_chart(chart, use_container_width=True)
 
 # 📑 Session Summary
-st.marst.markdown("### 🧠 Session Summary")
+st.markdown("### 🧠 Session Summary")
 summary_data = {
     "Total Questions Asked": len(st.session_state.get("chat_history", [])),
     "Most Clicked Suggestion": max(st.session_state["query_log"], key=st.session_state["query_log"].get) if st.session_state["query_log"] else "N/A",
@@ -337,7 +244,7 @@ summary_data = {
     "Rows in View": len(filtered_df)
 }
 for k, v in summary_data.items():
-    st.marst.markdown(f"- **{k}**: {v}")
+    st.markdown(f"- **{k}**: {v}")
 
 # 📥 Download Logs
 if st.session_state["usage_log"]:
@@ -348,5 +255,32 @@ if st.session_state["usage_log"]:
 st.page_link("pages/1_📊_Dashboard.py", label="📊 Dashboard", icon="📊")
 st.page_link("pages/4_Dashboard_Feature_Overview.py", label="📘 Dashboard Feature Overview", icon="📘")
 st.page_link("pages/3__Chat_Assistant_Feature_Overview.py", label="📄 Chat Assistant Feature Overview", icon="📄")
-st.marst.markdown("---")
-st.marst.markdown("Made with ❤️ by Deepti Bahel | Powered by Streamlit + LangChain + Altair")
+st.markdown("---")
+st.markdown("Made with ❤️ by Deepti Bahel | Powered by Streamlit + LangChain + Altair")
+
+
+
+# 📖 Narrative Insight
+from langchain.prompts import PromptTemplate
+from langchain.llms import OpenAI
+
+if st.button("🧠 Generate Insight Summary"):
+    st.info("Generating insight summary from the filtered dataset...")
+    try:
+        if len(filtered_df) == 0:
+            st.warning("No data available with current filters.")
+        else:
+            data_sample = filtered_df.describe(include='all').to_string()
+            prompt_template = PromptTemplate.from_template(
+                "You are a healthcare data analyst. Based on the following dataset summary, write 3 key insights in plain language:
+
+{summary}"
+            )
+            summary_prompt = prompt_template.format(summary=data_sample)
+            llm = OpenAI(temperature=0)
+            insight_summary = llm(summary_prompt)
+            st.success("✅ Insight Summary")
+            st.markdown(insight_summary)
+            log_event("narrative_summary_generated", f"{len(filtered_df)} rows")
+    except Exception as e:
+        st.error(f"⚠️ Error generating insight summary: {e}")

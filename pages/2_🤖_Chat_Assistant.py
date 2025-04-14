@@ -79,6 +79,7 @@ df = st.session_state["main_df"]
 # 🧹 Data Cleaning
 if "Billing Amount" in df.columns:
     df["Billing Amount"] = pd.to_numeric(df["Billing Amount"].replace('[\$,]', '', regex=True), errors="coerce")
+    df["Billing Formatted"] = df["Billing Amount"].apply(lambda x: f"${{x/1000:.1f}}K" if pd.notnull(x) else "N/A")
 if "Length of Stay" in df.columns:
     df["Length of Stay"] = pd.to_numeric(df.get("Length of Stay", pd.Series(dtype=float)), errors="coerce")
 
@@ -157,6 +158,9 @@ with st.form("chat_form", clear_on_submit=True):
     submitted = st.form_submit_button("Send")
     if submitted and user_input:
         st.session_state.last_chat_query = user_input
+        response = respond_to_query(user_input)
+        st.session_state.chat_history.append((user_input, response))
+        log_event("chat_query", user_input)
 
 def respond_to_query(query):
     try:

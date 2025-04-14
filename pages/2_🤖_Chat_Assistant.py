@@ -254,14 +254,15 @@ def main():
     render_advanced_insights(df)
     render_logs()
     render_glossary()
-    # 🔗 Navigation & Footer
+   
+
+
+# 👣 Footer
 st.markdown("---")
 st.markdown("### 🧭 Navigate to Other Pages")
 st.page_link("pages/1_📊_Dashboard.py", label="📊 Dashboard", icon="📊")
 st.page_link("pages/3__Chat_Assistant_Feature_Overview.py", label="📄 Chat Assistant Feature Overview", icon="📄")
 st.page_link("pages/4_Dashboard_Feature_Overview.py", label="📘 Dashboard Feature Overview", icon="📘")
-
-# 👣 Footer
 st.markdown("---")
 st.markdown(
     """

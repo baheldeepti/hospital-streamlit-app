@@ -17,7 +17,6 @@ from langchain.chat_models import ChatOpenAI
 from langchain.chains import RetrievalQA
 from langchain.vectorstores import FAISS
 from langchain.embeddings import OpenAIEmbeddings
-from langchain.agents import create_pandas_dataframe_agent
 from langchain_experimental.agents import create_pandas_dataframe_agent
 
 openai.api_key = st.secrets.get("OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY")

@@ -39,14 +39,7 @@ def log_event(event_type, detail):
         "type": event_type,
         "detail": detail
     })
-
-FALLBACK_RESPONSE = """🤖 I’m not able to understand that question right now.
-
-**Try asking something like:**
-- *Total billing by hospital*
-- *Average stay per condition*
-- *Top conditions by test result*
-"""
+    FALLBACK_RESPONSE = """🤖 I’m not able to understand that question right now."""
 
 # -------------------------------------
 # 📁 Data Load

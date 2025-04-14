@@ -14,13 +14,30 @@ from langchain_experimental.agents import create_pandas_dataframe_agent
 import openai
 from datetime import datetime
 import logging
+import time
 
 # 🔐 OpenAI Key Setup
 openai.api_key = st.secrets.get("OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY")
 
+
+# 📦 Utility: Export CSV Download Button
+def export_csv(dataframe, filename):
+    csv = dataframe.to_csv(index=False).encode()
+    st.download_button("📩 Download CSV", csv, file_name=f"{filename}.csv", mime="text/csv")
+
+
 # 📊 Page Config
 st.set_page_config(page_title="🤖 Chat Assistant", layout="wide")
 st.title("🤖 Hospital Chat Assistant")
+
+# 🐞 Debug Mode - Toggle in sidebar
+DEBUG_MODE = st.sidebar.checkbox("🐞 Enable Debug Mode")
+
+def debug_log(msg):
+    if DEBUG_MODE:
+        st.sidebar.markdown(f"🔍 **Debug**: {msg}")
+
+
 
 # 📋 Usage Logging Setup
 if "usage_log" not in st.session_state:
@@ -60,6 +77,7 @@ with st.sidebar.expander("📁 Load or Upload Dataset", expanded=True):
         df = pd.read_csv(sample_url)
         st.session_state["main_df"] = df
         st.success("✅ Sample dataset loaded.")
+        debug_log("Sample data loaded")
         log_event("dataset_loaded", "Sample")
 
     uploaded_file = st.file_uploader("Upload your CSV", type="csv")
@@ -67,6 +85,7 @@ with st.sidebar.expander("📁 Load or Upload Dataset", expanded=True):
         df = pd.read_csv(uploaded_file)
         st.session_state["main_df"] = df
         st.success("✅ File uploaded successfully.")
+        debug_log("User CSV uploaded")
         log_event("dataset_loaded", "User CSV")
 
 # 🧾 Exit if no data
@@ -155,15 +174,6 @@ suggestions = [
     "Average age of patients by condition"
 ]
 cols = st.columns(len(suggestions))
-for i, s in enumerate(suggestions):
-    if cols[i].button(s):
-        st.session_state["chat_input"] = s
-        st.session_state["query_log"][s] = st.session_state["query_log"].get(s, 0) + 1
-        st.session_state["last_chat_query"] = s
-        response = respond_to_query(s)
-        st.session_state.chat_history.append((s, response))
-        log_event("chat_query", s)
-
 def respond_to_query(query):
     try:
         agent = create_pandas_dataframe_agent(
@@ -174,22 +184,51 @@ def respond_to_query(query):
         return agent.run(query)
     except Exception as e:
         st.session_state["fallback_log"].append(query)
-        return "⚠️ Code execution not supported in this environment."
+        return "🤖 I’m currently unable to answer that question. Try rephrasing or ask about another metric!"
+
+
+
+for i, s in enumerate(suggestions):
+    if cols[i].button(s):
+        st.session_state["chat_input"] = s
+        st.session_state["query_log"][s] = st.session_state["query_log"].get(s, 0) + 1
+        
+
+    st.session_state[\"last_chat_query\"] = s
+        
+
+    response = respond_to_query(s)
+        
+
+    st.session_state.chat_history.append((s, response))
+        
+
+    log_event(\"chat_query\", s)
 
 
 # 📊 Advanced Insights Section
-st.mar
-
+st.markdown("### 📊 Advanced Insights")
 with st.form("chat_form", clear_on_submit=True):
     user_input = st.text_input("Ask a question", placeholder="E.g. Average stay by condition")
     submitted = st.form_submit_button("Send")
+    
     if submitted and user_input:
         st.session_state.last_chat_query = user_input
+        typing_box = st.empty()
+        typing_box.markdown("🤖 Assistant is typing...")
+        time.sleep(1.2)
         response = respond_to_query(user_input)
+        typing_box.empty()
         st.session_state.chat_history.append((user_input, response))
+        debug_log("Chat response appended")
         log_event("chat_query", user_input)
 
-kdown("### 📊 Advanced Insights")
+        # 📋 Copy to clipboard
+        with st.expander("📋 Copy Response"):
+            st.code(response, language="markdown")
+    log_event(\"chat_query\", user_input)
+
+st.markdown("### 📊 Advanced Insights")
 
 chart_type = st.selectbox("Choose chart type", ["Bar Chart", "Line Chart", "Pie Chart"])
 dimension = st.selectbox("Choose dimension", sorted(["Gender", "Insurance Provider", "Hospital", "Medical Condition", "Date of Admission"]))
@@ -204,6 +243,30 @@ if chart_type == "Line Chart" and dimension == "Date of Admission":
         y="Billing Amount:Q"
     ).properties(title="Average Billing Over Time")
     st.info("💡 Tip: You can download the data for this chart as CSV below.")
+
+    # 📥 Export chart data as CSV
+    export_csv(data, f"{dimension.lower().replace(' ', '_')}_data")
+
+    
+    # 🧠 Optional Chart Summary
+    if st.checkbox("🧠 Summarize this chart using GPT", key=f"summary_{chart_type}_{dimension}"):
+        try:
+            from langchain.prompts import PromptTemplate
+            from langchain.llms import OpenAI
+
+            summary_text = data.describe(include='all').to_string()
+            prompt = PromptTemplate.from_template(
+                "You are a healthcare analyst. Summarize this chart and dataset insightfully:
+
+{summary}"
+            )
+            llm = OpenAI(temperature=0)
+            summary = llm(prompt.format(summary=summary_text))
+            st.success("🔍 GPT Insight:")
+            st.markdown(summary)
+        except Exception as e:
+            st.warning(f"GPT Summary unavailable: {e}")
+
 st.altair_chart(chart, use_container_width=True)
 
 elif chart_type == "Bar Chart":
@@ -222,7 +285,11 @@ elif chart_type == "Bar Chart":
         text="Count:Q"
     )
     st.info("💡 Tip: You can download the data for this chart as CSV below.")
-st.altair_chart(chart + labels, use_container_width=True)
+
+    # 📥 Export chart data as CSV
+    export_csv(data, f"{dimension.lower().replace(' ', '_')}_data")
+
+    st.altair_chart(chart + labels, use_container_width=True)
 
 elif chart_type == "Pie Chart":
     data = filtered_df[dimension].dropna().value_counts().reset_index()
@@ -233,11 +300,17 @@ elif chart_type == "Pie Chart":
         tooltip=[dimension, "Count"]
     ).properties(title=f"{dimension} Distribution")
     st.info("💡 Tip: You can download the data for this chart as CSV below.")
-st.altair_chart(chart, use_container_width=True)
+
+    # 📥 Export chart data as CSV
+    export_csv(data, f"{dimension.lower().replace(' ', '_')}_data")
+
+    st.altair_chart(chart, use_container_width=True)
 
 # 📑 Session Summary
 st.markdown("### 🧠 Session Summary")
 summary_data = {
+
+summary_data["Insight Summary"] = summary if "summary" in locals() else "Not generated"
     "Total Questions Asked": len(st.session_state.get("chat_history", [])),
     "Most Clicked Suggestion": max(st.session_state["query_log"], key=st.session_state["query_log"].get) if st.session_state["query_log"] else "N/A",
     "Active Filters": f"{len(hospitals)} Hospitals, {len(conditions)} Conditions",
@@ -260,27 +333,11 @@ st.markdown("Made with ❤️ by Deepti Bahel | Powered by Streamlit + LangChain
 
 
 
-# 📖 Narrative Insight
-from langchain.prompts import PromptTemplate
-from langchain.llms import OpenAI
+# 📦 Unit Test Stubs (optional separate test file)
+def test_kpi_computation():
+    assert isinstance(df["Billing Amount"].sum(), (int, float))
 
-if st.button("🧠 Generate Insight Summary"):
-    st.info("Generating insight summary from the filtered dataset...")
-    try:
-        if len(filtered_df) == 0:
-            st.warning("No data available with current filters.")
-        else:
-            data_sample = filtered_df.describe(include='all').to_string()
-            prompt_template = PromptTemplate.from_template(
-                "You are a healthcare data analyst. Based on the following dataset summary, write 3 key insights in plain language:
-
-{summary}"
-            )
-            summary_prompt = prompt_template.format(summary=data_sample)
-            llm = OpenAI(temperature=0)
-            insight_summary = llm(summary_prompt)
-            st.success("✅ Insight Summary")
-            st.markdown(insight_summary)
-            log_event("narrative_summary_generated", f"{len(filtered_df)} rows")
-    except Exception as e:
-        st.error(f"⚠️ Error generating insight summary: {e}")
+def test_column_presence():
+    required_cols = ["Billing Amount", "Length of Stay", "Hospital"]
+    for col in required_cols:
+        assert col in df.columns

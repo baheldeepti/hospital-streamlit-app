@@ -141,6 +141,6 @@ st.markdown("""
 - **Patient Clusters**: Patients can be grouped by age, cost, and time spent, helping hospitals personalize care or optimize processes.
 """)
 
-st.page_link("pages/2_🤖_Chat_Assistant.py", label="🤖Chat Assistant", icon="📊")
-st.page_link("pages/4_Dashboard_Feature_Overview.py", label="📊Dashboard Feature Overview", icon="📊")
-st.page_link("pages/3__Chat_Assistant_Feature_Overview.py", label="📄Chat Assistant Feature Overview", icon="📄")
+st.page_link("pages/2_🤖_Chat_Assistant.py", label="📄Chat Assistant", icon="📄")
+st.page_link("pages/4_Dashboard_Feature_Overview.py", label="Dashboard Feature Overview")
+st.page_link("pages/3__Chat_Assistant_Feature_Overview.py", label="📄Chat Assistant Feature Overview")

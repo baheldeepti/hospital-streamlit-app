@@ -25,6 +25,32 @@ openai.api_key = st.secrets.get("OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY")
 st.set_page_config(layout="wide")
 st.title("🧠 Hospital Chat Assistant")
 
+# ℹ️ App Information
+with st.sidebar.expander("ℹ️ About This App", expanded=False):
+    st.markdown("""
+    **🧠 Hospital Chat Assistant** is an interactive Streamlit application designed to help users explore and analyze hospital patient data with ease.
+
+    #### 🔍 Key Features:
+    - **Conversational AI Chatbot**: Ask natural language questions about the dataset (e.g., billing, conditions, admissions).
+    - **Data Loading Options**: Upload your own CSV or load a sample dataset.
+    - **Auto Chart Previews**: Get visual answers with auto-generated bar charts and downloadable PNG/PDF files.
+    - **Data Glossary**: Sidebar reference for column definitions to support data understanding.
+    - **Dynamic Suggestions**: Smart question prompts based on available columns in your dataset.
+    - **RAG and Fallback Agents**: Uses LangChain RAG (Retrieval-Augmented Generation) and Pandas Data Agent for insights.
+    - **Tooltip-Enhanced Responses**: Explanations for technical terms directly in chat.
+    - **Query Leaderboard**: See which prompts are used most often.
+    - **Full Logs & Downloads**: Export your chat history, query logs, and fallback inputs.
+
+    #### 🛠️ Powered By:
+    - **Streamlit** for UI
+    - **LangChain + FAISS** for conversational AI
+    - **Altair & Matplotlib** for charts
+    - **Statsmodels** for seasonal analysis (extendable)
+    - **OpenAI API** for LLM responses
+
+    👩‍⚕️ Built for data analysts, hospital admins, and curious users who want to make sense of medical data — easily and intuitively.
+    """)
+
 # 🧾 Sidebar: Dataset Loader
 with st.sidebar.expander("📁 Load or Upload Dataset", expanded=True):
     if st.button("Load Sample Hospital Data"):
